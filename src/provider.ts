@@ -200,6 +200,7 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
         return {
           id: model.id,
           name: model.displayName,
+          detail: "Z.ai",
           tooltip: `Z.ai ${model.name}`,
           family: "zai",
           version: "1.0.0",
