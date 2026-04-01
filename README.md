@@ -12,12 +12,13 @@ Integrates [Z.ai](https://z.ai) (智谱AI) models into VS Code Copilot Chat with
   - **GLM-4.7**: 200K context window, up to 128K output tokens
   - **GLM-4.7 Flash**: Faster variant with 131K max output tokens
   - **GLM-5**: 200K context window, up to 128K output tokens
-  - **GLM-5V-Turbo**: Multimodal coding model with vision support (internal only, not exposed to users)
+  - **GLM-5V-Turbo**: Multimodal coding model with vision support
+  - **GLM-4.6V**: Vision model (internal only, not exposed to users)
 
 - **Advanced Capabilities**
   - Tool calling support for VS Code chat participants
   - Streaming responses via Server-Sent Events (SSE)
-  - Vision support via GLM-OCR and GLM-5V-Turbo fallback
+  - Vision support via GLM-OCR and GLM-4.6V fallback
   - Thinking/reasoning process display (configurable)
   - Automatic image-to-text conversion for non-vision models
 
@@ -80,8 +81,8 @@ Get your API key from [Z.ai Platform](https://open.bigmodel.cn/).
 Once configured, select Z.ai as your chat provider in VS Code Copilot Chat:
 
 - Open the Chat view (`Cmd/Ctrl + Alt + I`)
-- Click the provider selector
-- Choose a Z.ai model (GLM-4.7, GLM-4.7 Flash, or GLM-5)
+- Click the provider selectorGLM-5, or GLM-5V-Turbo)
+  - Note: GLM-4.6V(GLM-4.7, GLM-4.7 Flash, or GLM-5)
   - Note: GLM-5V-Turbo is used internally for image processing and is not selectable
 
 ### Configuration
@@ -99,12 +100,13 @@ Once configured, select Z.ai as your chat provider in VS Code Copilot Chat:
 | GLM-4.7       | 200,000        | 131,072    | No     | Yes   |
 | GLM-4.7 Flash | 200,000        | 131,072    | No     | Yes   |
 | GLM-5         | 200,000        | 131,072    | No     | Yes   |
+| GLM-5V-Turbo  | 200,000        | 131,072    | Yes    | Yes   |
 
 ### Internal Models (Not Exposed)
 
-| Model        | Context Window | Max Output | Vision | Tools | Purpose                                       |
-| ------------ | -------------- | ---------- | ------ | ----- | --------------------------------------------- |
-| GLM-5V-Turbo | 200,000        | 131,072    | Yes    | Yes   | Image analysis fallback for non-vision models |
+| Model    | Context Window | Max Output | Vision | Tools | Purpose                                       |
+| -------- | -------------- | ---------- | ------ | ----- | --------------------------------------------- |
+| GLM-4.6V | 128,000        | 16,000     | Yes    | Yes   | Image analysis fallback for non-vision models |
 
 ## MCP Integration
 
@@ -169,8 +171,8 @@ If you see authentication errors:
 
 For non-vision models (GLM-4.7, GLM-4.7 Flash):
 
-- Images are automatically converted to text descriptions using GLM-OCR MCP
-- If GLM-OCR fails, the extension internally uses GLM-5V-Turbo for image analysis
+- Images are automatically converted to text descripti4.6V for image analysis
+- GLM-4.6Vails, the extension internally uses GLM-5V-Turbo for image analysis
 - GLM-5V-Turbo is **not selectable** by users—it is only used as an internal fallback
 
 ### Large Context Errors

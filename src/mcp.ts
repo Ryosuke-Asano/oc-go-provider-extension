@@ -42,7 +42,7 @@ export class ZaiMcpClient {
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
-          model: "glm-5v-turbo",
+          model: "glm-4.6v",
           messages: [
             {
               role: "user",
