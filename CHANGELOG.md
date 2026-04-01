@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.7] - 2026-04-02
+
+### Fixed
+
+- Token usage tracking: Now properly captures and reports prompt/completion tokens from API responses
+  - Fixes: Chats showing "0 / 331K" token usage instead of actual consumed tokens
+  - Tracks usage metrics through streaming response and logs token counts
+
 ## [0.7.6] - 2026-04-02
 
 ### Added
