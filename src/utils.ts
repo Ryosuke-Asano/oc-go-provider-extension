@@ -538,11 +538,14 @@ export function validateRequest(
 }
 
 /**
- * Estimate token count (rough approximation: ~3 chars per token)
+ * Estimate token count.
+ *
+ * GLM tokenizer averages ~2 chars/token for mixed CJK/Latin text.
+ * Using a conservative divisor of 2 avoids undercounting which causes
+ * context-window-exceeded errors at the API level.
  */
 export function estimateTokens(text: string): number {
-  const result = Math.ceil(text.length / 3);
-  return result;
+  return Math.ceil(text.length / 2);
 }
 
 /**

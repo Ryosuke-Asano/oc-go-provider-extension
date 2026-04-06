@@ -47,7 +47,7 @@ describe("ZaiChatModelProvider", () => {
 
     const glm47 = models.find((m) => m.id === "glm-4.7");
     expect(glm47).toBeDefined();
-    expect(glm47?.maxInputTokens).toBe(Math.floor(202752 * 0.75));
+    expect(glm47?.maxInputTokens).toBe(202752 - Math.min(65535, 65536));
     expect(glm47?.maxOutputTokens).toBe(65535);
   });
 
@@ -177,6 +177,6 @@ describe("ZaiChatModelProvider", () => {
       message,
       createToken()
     );
-    expect(count).toBe(Math.ceil(text.length / 3));
+    expect(count).toBe(Math.ceil(text.length / 2));
   });
 });

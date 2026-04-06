@@ -233,7 +233,7 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
           tooltip: `Z.ai ${model.name}`,
           family: "zai",
           version: "1.0.0",
-          maxInputTokens: Math.max(1, Math.floor(model.contextWindow * 0.75)),
+          maxInputTokens: Math.max(1, model.contextWindow - Math.min(model.maxOutput, DEFAULT_MAX_TOKENS)),
           maxOutputTokens: model.maxOutput,
           capabilities: {
             toolCalling: model.supportsTools ? MAX_TOOLS_PER_REQUEST : false,
