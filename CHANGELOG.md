@@ -24,4 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated README and package.json descriptions for accuracy
 - Added token limit disclaimer to README
 
-## [0.2.0] - 2026-04-14
+## [0.1.0] - 2026-04-14
+
+- The First Release.
