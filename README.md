@@ -3,22 +3,23 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.104.0%2B-blue)](https://code.visualstudio.com/)
 
-Integrates [OpenCode Go](https://opencode.ai/docs/ja/go) models into VS Code Copilot Chat with advanced features including vision support, tool calling, and thinking process display.
+Integrates [OpenCode Go](https://opencode.ai/docs/ja/go) models into VS Code Copilot Chat with advanced features including vision support and tool calling.
 
 ## Features
 
 - **Multiple Model Support**
   - **GLM-5**: 202K context window, up to 131K output tokens
   - **GLM-5.1**: 202K context window, up to 131K output tokens
-  - **Kimi K2.5**: 131K context window, up to 8K output tokens
-  - **MiMo-V2-Pro**: 131K context window, up to 16K output tokens
-  - **MiMo-V2-Omni**: 131K context window, up to 16K output tokens, vision support
+  - **Kimi K2.5**: 262K context window, up to 65K output tokens, vision support
+  - **MiMo-V2-Pro**: 1,048K context window, up to 131K output tokens
+  - **MiMo-V2-Omni**: 262K context window, up to 65K output tokens, vision support
+  - **MiniMax M2.5**: 196K context window, up to 131K output tokens
+  - **MiniMax M2.7**: 196K context window, up to 131K output tokens
 
 - **Advanced Capabilities**
   - Tool calling support for VS Code chat participants
   - Streaming responses via Server-Sent Events (SSE)
-  - Vision support via MiMo-V2-Omni
-  - Thinking/reasoning process display (configurable)
+  - Vision support via Kimi K2.5 and MiMo-V2-Omni
   - Automatic image-to-text conversion for non-vision models
 
 - **Secure API Key Management**
@@ -75,23 +76,21 @@ Once configured, select OpenCode Go as your chat provider in VS Code Copilot Cha
 
 - Open the Chat view (`Cmd/Ctrl + Alt + I`)
 - Click the provider selector
-- Choose an OpenCode Go model (GLM-5, GLM-5.1, Kimi K2.5, MiMo-V2-Pro, or MiMo-V2-Omni)
-
-### Configuration
-
-| Setting                      | Type    | Default | Description                                                 |
-| ---------------------------- | ------- | ------- | ----------------------------------------------------------- |
-| `opencode-go.enableThinking` | boolean | `true`  | Enable thinking/reasoning process display in chat responses |
+- Choose an OpenCode Go model (GLM-5, GLM-5.1, Kimi K2.5, MiMo-V2-Pro, MiMo-V2-Omni, MiniMax M2.5, or MiniMax M2.7)
 
 ## Supported Models
+
+Token limits below are the values currently used by this extension and may change if OpenCode Go updates model limits.
 
 | Model        | Context Window | Max Output | Vision | Tools |
 | ------------ | -------------- | ---------- | ------ | ----- |
 | GLM-5        | 202,752        | 131,072    | No     | Yes   |
 | GLM-5.1      | 202,752        | 131,072    | No     | Yes   |
-| Kimi K2.5    | 131,072        | 8,192      | No     | Yes   |
-| MiMo-V2-Pro  | 131,072        | 16,384     | No     | Yes   |
-| MiMo-V2-Omni | 131,072        | 16,384     | Yes    | Yes   |
+| Kimi K2.5    | 262,144        | 65,536     | Yes    | Yes   |
+| MiMo-V2-Pro  | 1,048,576      | 131,072    | No     | Yes   |
+| MiMo-V2-Omni | 262,144        | 65,536     | Yes    | Yes   |
+| MiniMax M2.5 | 196,608        | 131,072    | No     | Yes   |
+| MiniMax M2.7 | 196,608        | 131,072    | No     | Yes   |
 
 ## MCP Integration
 
@@ -152,7 +151,7 @@ If you see authentication errors:
 
 ### Vision Not Working
 
-For non-vision models (GLM-5, GLM-5.1, Kimi K2.5, MiMo-V2-Pro):
+For non-vision models (GLM-5, GLM-5.1, MiMo-V2-Pro, MiniMax M2.5, MiniMax M2.7):
 
 - Images are automatically converted to text descriptions using Vision MCP
 - If the MCP tool fails, the extension internally uses MiMo-V2-Omni for image analysis

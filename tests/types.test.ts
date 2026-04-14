@@ -374,8 +374,8 @@ describe("OC_GO_MODELS", () => {
     const model = OC_GO_MODELS.find((m) => m.id === "kimi-k2.5");
     expect(model).toBeDefined();
     expect(model?.name).toBe("Kimi K2.5");
-    expect(model?.contextWindow).toBe(131072);
-    expect(model?.maxOutput).toBe(8192);
+    expect(model?.contextWindow).toBe(262144);
+    expect(model?.maxOutput).toBe(65536);
   });
 
   it("should have MiMo-V2-Omni vision model", () => {
@@ -383,8 +383,8 @@ describe("OC_GO_MODELS", () => {
     expect(model).toBeDefined();
     expect(model?.name).toBe("MiMo-V2-Omni");
     expect(model?.supportsVision).toBe(true);
-    expect(model?.contextWindow).toBe(131072);
-    expect(model?.maxOutput).toBe(16384);
+    expect(model?.contextWindow).toBe(262144);
+    expect(model?.maxOutput).toBe(65536);
   });
 
   it("should have MiniMax M2.5 model with Anthropic API format", () => {
@@ -393,8 +393,8 @@ describe("OC_GO_MODELS", () => {
     expect(model?.name).toBe("MiniMax M2.5");
     expect(model?.supportsVision).toBe(false);
     expect(model?.apiFormat).toBe("anthropic");
-    expect(model?.contextWindow).toBe(1048576);
-    expect(model?.maxOutput).toBe(16384);
+    expect(model?.contextWindow).toBe(196608);
+    expect(model?.maxOutput).toBe(131072);
   });
 
   it("should have MiniMax M2.7 model with Anthropic API format", () => {
@@ -403,8 +403,8 @@ describe("OC_GO_MODELS", () => {
     expect(model?.name).toBe("MiniMax M2.7");
     expect(model?.supportsVision).toBe(false);
     expect(model?.apiFormat).toBe("anthropic");
-    expect(model?.contextWindow).toBe(1048576);
-    expect(model?.maxOutput).toBe(16384);
+    expect(model?.contextWindow).toBe(196608);
+    expect(model?.maxOutput).toBe(131072);
   });
 
   it("should have OpenAI format for non-MiniMax models", () => {

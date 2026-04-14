@@ -7,99 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.7.7] - 2026-04-02
+## [0.2.0] - 2026-04-14
+
+### Changed
+
+- Aligned model token limits with OpenRouter published specifications
+  - **Kimi K2.5**: context 131K → 262K, max output 8K → 65K
+  - **MiMo-V2-Pro**: context 131K → 1M, max output 16K → 131K
+  - **MiMo-V2-Omni**: context 131K → 262K, max output 16K → 65K
+  - **MiniMax M2.5**: context 1M → 196K, max output 16K → 131K
+  - **MiniMax M2.7**: context 1M → 196K, max output 16K → 131K
+  - GLM-5 and GLM-5.1 remain unchanged (already aligned)
 
 ### Fixed
 
-- Token usage tracking: Now properly captures and reports prompt/completion tokens from API responses
-  - Fixes: Chats showing "0 / 331K" token usage instead of actual consumed tokens
-  - Tracks usage metrics through streaming response and logs token counts
+- Updated README and package.json descriptions for accuracy
+- Added token limit disclaimer to README
 
-## [0.7.6] - 2026-04-02
-
-### Added
-
-- GLM-5-Turbo model support (200K context window, 128K max output tokens)
-
-## [0.7.5] - 2026-04-02
-
-### Changed
-
-- Reverted internal vision fallback to GLM-4.6V (some plans don't support GLM-5V-Turbo yet)
-- GLM-5V-Turbo remains as a user-selectable multimodal coding model
-
-## [0.7.4] - 2026-04-02
-
-### Changed
-
-- Replaced internal GLM-4.6V vision fallback with GLM-5V-Turbo multimodal coding model
-  - GLM-5V-Turbo: 200K context window, 128K max output, vision + tool support
-  - Updated vision fallback in `mcp.ts` and `provider.ts`
-
-## [0.7.3] - 2026-03-28
-
-### Added
-
-- GLM-5.1 model support
-
-## [0.6.4] - 2026-03-XX
-
-### Added
-
-- CI/CD pipeline with GitHub Actions
-  - Automated linting, testing, and compilation checks
-  - Automated release workflow for tag pushes
-- ESLint Flat Config configuration (ESLint v9)
-- Prettier ignore file
-- Contributing guidelines
-- Changelog
-
-### Changed
-
-- Updated `package.json` scripts for better development workflow
-- Added TypeScript ESLint dependencies
-- Updated lint script for Flat Config
-- Improved streaming tool-call parsing to handle text-embedded tool signals and strip control tokens from visible output
-- Improved OpenAI-compatible message conversion for tool-call and tool-result turns (`assistant` + `tool` role flow)
-
-### Fixed
-
-- Prevented internal tool-call JSON blobs from leaking into chat output in certain streaming formats
-- Reduced request stalls when streams end with incomplete tool-call argument chunks
-- Fixed legacy part-shape detection to avoid misclassifying tool calls as tool results
-
-## [0.5.2] - 2026-02-06
-
-### Changed
-
-- Updated README to reflect current model specs and troubleshooting notes
-
-## [0.5.1] - 2026-02-06
-
-### Changed
-
-- Added Node.js types in `tsconfig.json` to support Buffer usage
-- Updated `watch` script to use `tsc -w`
-
-### Fixed
-
-- Prevented tool result content from inflating request size
-- Added safe truncation for tool result text and improved token estimation
-
-## [0.5.0] - 2025-01-XX
-
-### Added
-
-- Support for GLM-4.7 and GLM-4.7 Flash (GLM-4.6V is kept internal for vision fallback)
-- Tool calling support
-- Streaming responses
-- Vision support via GLM-OCR and internal GLM-4.6V fallback
-- Thinking process display for GLM-4.7
-- Detailed logging for image analysis and reasoning
-- Secure API key storage using VS Code secret storage
-- Command palette integration for API key management
-
-[Unreleased]: https://github.com/Ryosuke-Asano/zai-vscode-chat/compare/v0.5.2...HEAD
-[0.5.2]: https://github.com/Ryosuke-Asano/zai-vscode-chat/releases/tag/v0.5.2
-[0.5.1]: https://github.com/Ryosuke-Asano/zai-vscode-chat/releases/tag/v0.5.1
-[0.5.0]: https://github.com/Ryosuke-Asano/zai-vscode-chat/releases/tag/v0.5.0
+## [0.2.0] - 2026-04-14
