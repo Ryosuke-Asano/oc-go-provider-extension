@@ -127,6 +127,8 @@ export interface OcGoModelInfo {
   supportsTools: boolean;
   supportsVision: boolean;
   apiFormat: OcGoApiFormat;
+  /** If set, this exact temperature value is sent for every request (some models only accept a single value). */
+  fixedTemperature?: number;
 }
 
 /**
@@ -302,6 +304,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     supportsTools: true,
     supportsVision: true,
     apiFormat: "openai",
+    fixedTemperature: 1,
   },
   {
     id: "mimo-v2-pro",

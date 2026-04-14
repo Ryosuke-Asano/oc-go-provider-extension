@@ -468,7 +468,11 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
       const maxTokensVal =
         typeof mo?.max_tokens === "number" ? mo.max_tokens : DEFAULT_MAX_TOKENS;
       const temperatureVal =
-        typeof mo?.temperature === "number" ? mo.temperature : 0.7;
+        typeof effectiveModelInfo?.fixedTemperature === "number"
+          ? effectiveModelInfo.fixedTemperature
+          : typeof mo?.temperature === "number"
+            ? mo.temperature
+            : 0.7;
       const effectiveMaxOutputTokens =
         effectiveModelInfo?.maxOutput ?? model.maxOutputTokens;
       const requestedMaxTokens = Math.min(
