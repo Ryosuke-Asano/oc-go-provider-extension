@@ -808,10 +808,7 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
     if (toolConfig.tools && toolConfig.tools.length > 0) {
       requestBody.tools = toolConfig.tools;
       // Only set tool_choice when it's not the default "auto"
-      if (
-        toolConfig.tool_choice &&
-        toolConfig.tool_choice !== "auto"
-      ) {
+      if (toolConfig.tool_choice && toolConfig.tool_choice !== "auto") {
         requestBody.tool_choice = toolConfig.tool_choice;
       }
     }

@@ -276,7 +276,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
   {
     id: "glm-5",
     name: "GLM-5",
-    displayName: "GLM-5 (OpenCode Go)",
+    displayName: "GLM-5",
     contextWindow: 202752,
     maxOutput: 131072,
     supportsTools: true,
@@ -286,7 +286,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
   {
     id: "glm-5.1",
     name: "GLM-5.1",
-    displayName: "GLM-5.1 (OpenCode Go)",
+    displayName: "GLM-5.1",
     contextWindow: 202752,
     maxOutput: 131072,
     supportsTools: true,
@@ -296,7 +296,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
   {
     id: "kimi-k2.5",
     name: "Kimi K2.5",
-    displayName: "Kimi K2.5 (OpenCode Go)",
+    displayName: "Kimi K2.5",
     contextWindow: 131072,
     maxOutput: 8192,
     supportsTools: true,
@@ -306,7 +306,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
   {
     id: "mimo-v2-pro",
     name: "MiMo-V2-Pro",
-    displayName: "MiMo-V2-Pro (OpenCode Go)",
+    displayName: "MiMo-V2-Pro",
     contextWindow: 131072,
     maxOutput: 16384,
     supportsTools: true,
@@ -316,7 +316,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
   {
     id: "mimo-v2-omni",
     name: "MiMo-V2-Omni",
-    displayName: "MiMo-V2-Omni (OpenCode Go)",
+    displayName: "MiMo-V2-Omni",
     contextWindow: 131072,
     maxOutput: 16384,
     supportsTools: true,
@@ -326,7 +326,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
   {
     id: "minimax-m2.5",
     name: "MiniMax M2.5",
-    displayName: "MiniMax M2.5 (OpenCode Go)",
+    displayName: "MiniMax M2.5",
     contextWindow: 1048576,
     maxOutput: 16384,
     supportsTools: true,
@@ -336,7 +336,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
   {
     id: "minimax-m2.7",
     name: "MiniMax M2.7",
-    displayName: "MiniMax M2.7 (OpenCode Go)",
+    displayName: "MiniMax M2.7",
     contextWindow: 1048576,
     maxOutput: 16384,
     supportsTools: true,
