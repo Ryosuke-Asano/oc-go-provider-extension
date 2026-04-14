@@ -3,28 +3,28 @@
  * Unit tests for MCP client in mcp.ts
  */
 
-import { ZaiMcpClient } from "../src/mcp";
+import { OcGoMcpClient } from "../src/mcp";
 import { secrets } from "../__mocks__/vscode";
 
 // Mock fetch for testing
 global.fetch = jest.fn();
 
-describe("ZaiMcpClient", () => {
-  let client: ZaiMcpClient;
+describe("OcGoMcpClient", () => {
+  let client: OcGoMcpClient;
 
   beforeEach(() => {
-    client = new ZaiMcpClient(secrets);
+    client = new OcGoMcpClient(secrets);
     jest.clearAllMocks();
   });
 
   describe("constructor", () => {
     it("should create client with empty API key", () => {
-      const newClient = new ZaiMcpClient(secrets);
+      const newClient = new OcGoMcpClient(secrets);
       expect(newClient).toBeDefined();
     });
 
     it("should store secrets reference", () => {
-      const newClient = new ZaiMcpClient(secrets);
+      const newClient = new OcGoMcpClient(secrets);
       expect(newClient).toHaveProperty("secrets");
     });
   });
@@ -61,7 +61,7 @@ describe("ZaiMcpClient", () => {
       expect(result).toBe("This is an image of a cat");
       expect(global.fetch).toHaveBeenCalled();
       const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
-      expect(fetchCall[0]).toContain("api.z.ai");
+      expect(fetchCall[0]).toContain("opencode.ai");
     });
 
     it("should return error message when tool call fails", async () => {

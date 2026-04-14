@@ -1,13 +1,13 @@
 {
-  "name": "zai-vscode-chat",
-  "displayName": "Z.ai Chat Provider for VS Code",
-  "description": "Integrates Z.ai models (GLM-4.5, GLM-4.6, GLM-4.7, GLM-5, GLM-5-Turbo, GLM-5.1, GLM-5V-Turbo, GLM-5-Code) into VS Code Copilot Chat with vision support and thinking process display",
-  "version": "0.8.3",
+  "name": "opencode-go-vscode-chat",
+  "displayName": "OpenCode Go Chat Provider for VS Code",
+  "description": "Integrates OpenCode Go models (GLM-5, GLM-5.1, Kimi K2.5, MiMo-V2-Pro, MiMo-V2-Omni) into VS Code Copilot Chat with vision support",
+  "version": "0.1.0",
   "publisher": "Ryosuke-Asano",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Ryosuke-Asano/zai-provider-extension"
+    "url": "https://github.com/Ryosuke-Asano/oc-go-provider-extension"
   },
   "engines": {
     "vscode": "^1.104.0"
@@ -20,8 +20,11 @@
     "ai",
     "chat",
     "copilot",
-    "zai",
+    "opencode",
+    "opencode-go",
     "glm",
+    "kimi",
+    "mimo",
     "llm"
   ],
   "activationEvents": [
@@ -31,35 +34,29 @@
   "contributes": {
     "languageModelChatProviders": [
       {
-        "vendor": "zai",
-        "displayName": "Z.ai",
-        "managementCommand": "zai.manage"
+        "vendor": "opencode-go",
+        "displayName": "OpenCode Go",
+        "managementCommand": "opencode-go.manage"
       }
     ],
     "languageModelTools": [
       {
-        "name": "zai_analyze_image",
-        "displayName": "Analyze Image with Z.ai Vision",
-        "modelDescription": "Analyze an image using Z.ai Vision model. Use this tool when you need to understand or describe the content of an image, extract text from images (OCR), or answer questions about visual content.",
+        "name": "opencode_go_analyze_image",
+        "displayName": "Analyze Image with OpenCode Go Vision",
+        "modelDescription": "Analyze an image using OpenCode Go Vision model. Use this tool when you need to understand or describe the content of an image, extract text from images (OCR), or answer questions about visual content.",
         "icon": "$(eye)"
       }
     ],
     "commands": [
       {
-        "command": "zai.manage",
-        "title": "Manage Z.ai Provider",
-        "category": "Z.ai"
+        "command": "opencode-go.manage",
+        "title": "Manage OpenCode Go Provider",
+        "category": "OpenCode Go"
       }
     ],
     "configuration": {
-      "title": "Z.ai",
-      "properties": {
-        "zai.enableThinking": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable thinking/reasoning process display in chat responses. When disabled, the model's reasoning will not be shown."
-        }
-      }
+      "title": "OpenCode Go",
+      "properties": {}
     }
   },
   "scripts": {

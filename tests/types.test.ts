@@ -4,22 +4,22 @@
  */
 
 import {
-  ZaiContentPart,
-  ZaiChatMessage,
-  ZaiToolCall,
-  ZaiTool,
-  ZaiChatRequest,
-  ZaiChatChoice,
-  ZaiChatResponse,
-  ZaiStreamChoice,
-  ZaiStreamResponse,
-  ZaiRequestBody,
-  ZAI_MODELS,
+  OcGoContentPart,
+  OcGoChatMessage,
+  OcGoToolCall,
+  OcGoTool,
+  OcGoChatRequest,
+  OcGoChatChoice,
+  OcGoChatResponse,
+  OcGoStreamChoice,
+  OcGoStreamResponse,
+  OcGoRequestBody,
+  OC_GO_MODELS,
 } from "../src/types";
 
-describe("ZaiContentPart", () => {
+describe("OcGoContentPart", () => {
   it("should create valid text part", () => {
-    const part: ZaiContentPart = {
+    const part: OcGoContentPart = {
       type: "text",
       text: "Hello world",
     };
@@ -28,7 +28,7 @@ describe("ZaiContentPart", () => {
   });
 
   it("should create valid image_url part", () => {
-    const part: ZaiContentPart = {
+    const part: OcGoContentPart = {
       type: "image_url",
       image_url: {
         url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==",
@@ -40,7 +40,7 @@ describe("ZaiContentPart", () => {
   });
 
   it("should validate type is either text or image_url", () => {
-    const textPart: ZaiContentPart = {
+    const textPart: OcGoContentPart = {
       type: "text",
       text: "test",
     };
@@ -48,9 +48,9 @@ describe("ZaiContentPart", () => {
   });
 });
 
-describe("ZaiChatMessage", () => {
+describe("OcGoChatMessage", () => {
   it("should create user message with text content", () => {
-    const message: ZaiChatMessage = {
+    const message: OcGoChatMessage = {
       role: "user",
       content: "Hello",
     };
@@ -59,8 +59,8 @@ describe("ZaiChatMessage", () => {
   });
 
   it("should create assistant message with content array", () => {
-    const content: ZaiContentPart[] = [{ type: "text", text: "Response" }];
-    const message: ZaiChatMessage = {
+    const content: OcGoContentPart[] = [{ type: "text", text: "Response" }];
+    const message: OcGoChatMessage = {
       role: "assistant",
       content,
     };
@@ -69,7 +69,7 @@ describe("ZaiChatMessage", () => {
   });
 
   it("should include tool_calls in message", () => {
-    const toolCall: ZaiToolCall = {
+    const toolCall: OcGoToolCall = {
       id: "call_123",
       type: "function",
       function: {
@@ -77,7 +77,7 @@ describe("ZaiChatMessage", () => {
         arguments: '{"location": "Tokyo"}',
       },
     };
-    const message: ZaiChatMessage = {
+    const message: OcGoChatMessage = {
       role: "assistant",
       content: "",
       tool_calls: [toolCall],
@@ -88,7 +88,7 @@ describe("ZaiChatMessage", () => {
   });
 
   it("should include tool_call_id for tool messages", () => {
-    const message: ZaiChatMessage = {
+    const message: OcGoChatMessage = {
       role: "tool",
       content: '{"result": "sunny"}',
       tool_call_id: "call_123",
@@ -99,7 +99,7 @@ describe("ZaiChatMessage", () => {
   });
 
   it("should support name field", () => {
-    const message: ZaiChatMessage = {
+    const message: OcGoChatMessage = {
       role: "user",
       content: "Hello",
       name: "John",
@@ -108,9 +108,9 @@ describe("ZaiChatMessage", () => {
   });
 });
 
-describe("ZaiToolCall", () => {
+describe("OcGoToolCall", () => {
   it("should create valid function tool call", () => {
-    const toolCall: ZaiToolCall = {
+    const toolCall: OcGoToolCall = {
       id: "call_123",
       type: "function",
       function: {
@@ -125,7 +125,7 @@ describe("ZaiToolCall", () => {
 
   it("should include valid JSON arguments", () => {
     const args = JSON.stringify({ key: "value", num: 123 });
-    const toolCall: ZaiToolCall = {
+    const toolCall: OcGoToolCall = {
       id: "call_456",
       type: "function",
       function: {
@@ -140,9 +140,9 @@ describe("ZaiToolCall", () => {
   });
 });
 
-describe("ZaiTool", () => {
+describe("OcGoTool", () => {
   it("should create valid function tool definition", () => {
-    const tool: ZaiTool = {
+    const tool: OcGoTool = {
       type: "function",
       function: {
         name: "get_current_time",
@@ -159,7 +159,7 @@ describe("ZaiTool", () => {
   });
 
   it("should create tool without parameters", () => {
-    const tool: ZaiTool = {
+    const tool: OcGoTool = {
       type: "function",
       function: {
         name: "simple_tool",
@@ -169,19 +169,19 @@ describe("ZaiTool", () => {
   });
 });
 
-describe("ZaiChatRequest", () => {
+describe("OcGoChatRequest", () => {
   it("should create basic chat request", () => {
-    const request: ZaiChatRequest = {
-      model: "glm-4.7",
+    const request: OcGoChatRequest = {
+      model: "glm-5",
       messages: [{ role: "user", content: "Hello" }],
     };
-    expect(request.model).toBe("glm-4.7");
+    expect(request.model).toBe("glm-5");
     expect(request.messages.length).toBe(1);
   });
 
   it("should create request with temperature", () => {
-    const request: ZaiChatRequest = {
-      model: "glm-4.7",
+    const request: OcGoChatRequest = {
+      model: "glm-5",
       messages: [],
       temperature: 0.7,
     };
@@ -189,8 +189,8 @@ describe("ZaiChatRequest", () => {
   });
 
   it("should create request with max_tokens", () => {
-    const request: ZaiChatRequest = {
-      model: "glm-4.7",
+    const request: OcGoChatRequest = {
+      model: "glm-5",
       messages: [],
       max_tokens: 4096,
     };
@@ -198,8 +198,8 @@ describe("ZaiChatRequest", () => {
   });
 
   it("should create request with streaming enabled", () => {
-    const request: ZaiChatRequest = {
-      model: "glm-4.7",
+    const request: OcGoChatRequest = {
+      model: "glm-5",
       messages: [],
       stream: true,
     };
@@ -207,15 +207,15 @@ describe("ZaiChatRequest", () => {
   });
 
   it("should create request with tools", () => {
-    const tool: ZaiTool = {
+    const tool: OcGoTool = {
       type: "function",
       function: {
         name: "test_tool",
         description: "A test tool",
       },
     };
-    const request: ZaiChatRequest = {
-      model: "glm-4.7",
+    const request: OcGoChatRequest = {
+      model: "glm-5",
       messages: [],
       tools: [tool],
     };
@@ -224,8 +224,8 @@ describe("ZaiChatRequest", () => {
   });
 
   it("should create request with tool_choice auto", () => {
-    const request: ZaiChatRequest = {
-      model: "glm-4.7",
+    const request: OcGoChatRequest = {
+      model: "glm-5",
       messages: [],
       tool_choice: "auto",
     };
@@ -233,8 +233,8 @@ describe("ZaiChatRequest", () => {
   });
 
   it("should create request with tool_choice none", () => {
-    const request: ZaiChatRequest = {
-      model: "glm-4.7",
+    const request: OcGoChatRequest = {
+      model: "glm-5",
       messages: [],
       tool_choice: "none",
     };
@@ -242,8 +242,8 @@ describe("ZaiChatRequest", () => {
   });
 
   it("should create request with stop strings", () => {
-    const request: ZaiChatRequest = {
-      model: "glm-4.7",
+    const request: OcGoChatRequest = {
+      model: "glm-5",
       messages: [],
       stop: ["\n\n", "###"],
     };
@@ -252,9 +252,9 @@ describe("ZaiChatRequest", () => {
   });
 });
 
-describe("ZaiChatResponse", () => {
+describe("OcGoChatResponse", () => {
   it("should create valid chat response", () => {
-    const choice: ZaiChatChoice = {
+    const choice: OcGoChatChoice = {
       index: 0,
       message: {
         role: "assistant",
@@ -262,11 +262,11 @@ describe("ZaiChatResponse", () => {
       },
       finish_reason: "stop",
     };
-    const response: ZaiChatResponse = {
+    const response: OcGoChatResponse = {
       id: "resp_123",
       object: "chat.completion",
       created: Date.now(),
-      model: "glm-4.7",
+      model: "glm-5",
       choices: [choice],
       usage: {
         prompt_tokens: 10,
@@ -280,7 +280,7 @@ describe("ZaiChatResponse", () => {
   });
 
   it("should include tool_calls in response", () => {
-    const toolCall: ZaiToolCall = {
+    const toolCall: OcGoToolCall = {
       id: "call_123",
       type: "function",
       function: {
@@ -288,7 +288,7 @@ describe("ZaiChatResponse", () => {
         arguments: "{}",
       },
     };
-    const choice: ZaiChatChoice = {
+    const choice: OcGoChatChoice = {
       index: 0,
       message: {
         role: "assistant",
@@ -297,11 +297,11 @@ describe("ZaiChatResponse", () => {
       },
       finish_reason: "tool_calls",
     };
-    const response: ZaiChatResponse = {
+    const response: OcGoChatResponse = {
       id: "resp_456",
       object: "chat.completion",
       created: Date.now(),
-      model: "glm-4.7",
+      model: "glm-5",
       choices: [choice],
       usage: {
         prompt_tokens: 10,
@@ -313,9 +313,9 @@ describe("ZaiChatResponse", () => {
   });
 });
 
-describe("ZaiStreamResponse", () => {
+describe("OcGoStreamResponse", () => {
   it("should create valid stream response", () => {
-    const choice: ZaiStreamChoice = {
+    const choice: OcGoStreamChoice = {
       index: 0,
       delta: {
         role: "assistant",
@@ -323,11 +323,11 @@ describe("ZaiStreamResponse", () => {
       },
       finish_reason: null,
     };
-    const response: ZaiStreamResponse = {
+    const response: OcGoStreamResponse = {
       id: "stream_123",
       object: "chat.completion.chunk",
       created: Date.now(),
-      model: "glm-4.7",
+      model: "glm-5",
       choices: [choice],
     };
     expect(response.object).toBe("chat.completion.chunk");
@@ -335,7 +335,7 @@ describe("ZaiStreamResponse", () => {
   });
 
   it("should include reasoning_content in delta", () => {
-    const choice: ZaiStreamChoice = {
+    const choice: OcGoStreamChoice = {
       index: 0,
       delta: {
         role: "assistant",
@@ -344,55 +344,80 @@ describe("ZaiStreamResponse", () => {
       },
       finish_reason: null,
     };
-    const response: ZaiStreamResponse = {
+    const response: OcGoStreamResponse = {
       id: "stream_456",
       object: "chat.completion.chunk",
       created: Date.now(),
-      model: "glm-4.7",
+      model: "glm-5",
       choices: [choice],
     };
     expect(response.choices[0].delta.reasoning_content).toBeDefined();
   });
 });
 
-describe("ZAI_MODELS", () => {
+describe("OC_GO_MODELS", () => {
   it("should have at least one model defined", () => {
-    expect(ZAI_MODELS.length).toBeGreaterThan(0);
-  });
-
-  it("should have GLM-4.7 model", () => {
-    const model = ZAI_MODELS.find((m) => m.id === "glm-4.7");
-    expect(model).toBeDefined();
-    expect(model?.name).toBe("GLM-4.7");
-    expect(model?.supportsTools).toBe(true);
-    expect(model?.supportsVision).toBe(false);
-    // OpenRouter values: 202,752 context, 65,535 max output
-    expect(model?.contextWindow).toBe(202752);
-    expect(model?.maxOutput).toBe(65535);
-  });
-
-  it("should have GLM-4.7 Flash model", () => {
-    const model = ZAI_MODELS.find((m) => m.id === "glm-4.7-flash");
-    expect(model).toBeDefined();
-    expect(model?.name).toBe("GLM-4.7 Flash");
-    // OpenRouter values: 202,752 context, 65,535 max output
-    expect(model?.contextWindow).toBe(202752);
-    expect(model?.maxOutput).toBe(65535);
+    expect(OC_GO_MODELS.length).toBeGreaterThan(0);
   });
 
   it("should have GLM-5 model", () => {
-    const model = ZAI_MODELS.find((m) => m.id === "glm-5");
+    const model = OC_GO_MODELS.find((m) => m.id === "glm-5");
     expect(model).toBeDefined();
     expect(model?.name).toBe("GLM-5");
-    expect(model?.displayName).toBe("GLM-5");
     expect(model?.supportsTools).toBe(true);
     expect(model?.supportsVision).toBe(false);
     expect(model?.contextWindow).toBe(202752);
     expect(model?.maxOutput).toBe(131072);
   });
 
+  it("should have Kimi K2.5 model", () => {
+    const model = OC_GO_MODELS.find((m) => m.id === "kimi-k2.5");
+    expect(model).toBeDefined();
+    expect(model?.name).toBe("Kimi K2.5");
+    expect(model?.contextWindow).toBe(131072);
+    expect(model?.maxOutput).toBe(8192);
+  });
+
+  it("should have MiMo-V2-Omni vision model", () => {
+    const model = OC_GO_MODELS.find((m) => m.id === "mimo-v2-omni");
+    expect(model).toBeDefined();
+    expect(model?.name).toBe("MiMo-V2-Omni");
+    expect(model?.supportsVision).toBe(true);
+    expect(model?.contextWindow).toBe(131072);
+    expect(model?.maxOutput).toBe(16384);
+  });
+
+  it("should have MiniMax M2.5 model with Anthropic API format", () => {
+    const model = OC_GO_MODELS.find((m) => m.id === "minimax-m2.5");
+    expect(model).toBeDefined();
+    expect(model?.name).toBe("MiniMax M2.5");
+    expect(model?.supportsVision).toBe(false);
+    expect(model?.apiFormat).toBe("anthropic");
+    expect(model?.contextWindow).toBe(1048576);
+    expect(model?.maxOutput).toBe(16384);
+  });
+
+  it("should have MiniMax M2.7 model with Anthropic API format", () => {
+    const model = OC_GO_MODELS.find((m) => m.id === "minimax-m2.7");
+    expect(model).toBeDefined();
+    expect(model?.name).toBe("MiniMax M2.7");
+    expect(model?.supportsVision).toBe(false);
+    expect(model?.apiFormat).toBe("anthropic");
+    expect(model?.contextWindow).toBe(1048576);
+    expect(model?.maxOutput).toBe(16384);
+  });
+
+  it("should have OpenAI format for non-MiniMax models", () => {
+    const openaiModels = OC_GO_MODELS.filter(
+      (m) => m.id !== "minimax-m2.5" && m.id !== "minimax-m2.7"
+    );
+    openaiModels.forEach((model) => {
+      expect(model.apiFormat).toBe("openai");
+    });
+  });
+
   it("should all models have required fields", () => {
-    ZAI_MODELS.forEach((model) => {
+    OC_GO_MODELS.forEach((model) => {
       expect(model.id).toBeDefined();
       expect(typeof model.id).toBe("string");
       expect(model.name).toBeDefined();
@@ -403,16 +428,16 @@ describe("ZAI_MODELS", () => {
   });
 
   it("should all models have unique IDs", () => {
-    const ids = ZAI_MODELS.map((m) => m.id);
+    const ids = OC_GO_MODELS.map((m) => m.id);
     const uniqueIds = new Set(ids);
     expect(uniqueIds.size).toBe(ids.length);
   });
 });
 
-describe("ZaiRequestBody", () => {
+describe("OcGoRequestBody", () => {
   it("should support stream_options with include_usage", () => {
-    const body: ZaiRequestBody = {
-      model: "glm-4.7",
+    const body: OcGoRequestBody = {
+      model: "glm-5",
       messages: [],
       stream: true,
       stream_options: { include_usage: true },
@@ -422,8 +447,8 @@ describe("ZaiRequestBody", () => {
   });
 
   it("should allow stream_options to be omitted", () => {
-    const body: ZaiRequestBody = {
-      model: "glm-4.7",
+    const body: OcGoRequestBody = {
+      model: "glm-5",
       messages: [],
       stream: true,
     };
@@ -431,13 +456,13 @@ describe("ZaiRequestBody", () => {
   });
 });
 
-describe("ZaiStreamResponse with usage", () => {
+describe("OcGoStreamResponse with usage", () => {
   it("should parse usage from final streaming chunk", () => {
-    const response: ZaiStreamResponse = {
+    const response: OcGoStreamResponse = {
       id: "chatcmpl-123",
       object: "chat.completion.chunk",
       created: 1234567890,
-      model: "glm-4.7",
+      model: "glm-5",
       choices: [],
       usage: {
         prompt_tokens: 100,
@@ -452,11 +477,11 @@ describe("ZaiStreamResponse with usage", () => {
   });
 
   it("should handle chunk without usage", () => {
-    const response: ZaiStreamResponse = {
+    const response: OcGoStreamResponse = {
       id: "chatcmpl-123",
       object: "chat.completion.chunk",
       created: 1234567890,
-      model: "glm-4.7",
+      model: "glm-5",
       choices: [
         {
           index: 0,

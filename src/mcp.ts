@@ -1,9 +1,9 @@
 import * as vscode from "vscode";
 
 /**
- * Z.ai MCP Client for making HTTP-based MCP tool calls
+ * OpenCode Go MCP Client for making HTTP-based MCP tool calls
  */
-export class ZaiMcpClient {
+export class OcGoMcpClient {
   private apiKey: string;
 
   constructor(private readonly secrets: vscode.SecretStorage) {
@@ -15,26 +15,26 @@ export class ZaiMcpClient {
    */
   private async ensureApiKey(): Promise<boolean> {
     if (!this.apiKey) {
-      this.apiKey = (await this.secrets.get("zai.apiKey")) ?? "";
+      this.apiKey = (await this.secrets.get("opencode-go.apiKey")) ?? "";
     }
     return !!this.apiKey;
   }
 
   /**
-   * Analyze an image using Z.ai Vision model
-   * This can be used for non-Vision models to add image processing capabilities
+   * Analyze an image using OpenCode Go Vision model (MiMo-V2-Omni)
+   * This can be used for non-vision models to add image processing capabilities
    * @param imageData Base64-encoded image (data URL format)
    * @param prompt What to analyze in the image
    * @returns Image analysis result
    */
   async analyzeImage(imageData: string, prompt: string): Promise<string> {
     if (!(await this.ensureApiKey())) {
-      throw new Error("Z.ai API key not found");
+      throw new Error("OpenCode Go API key not found");
     }
 
     // Call Vision model via chat completions endpoint
     const response = await fetch(
-      "https://api.z.ai/api/coding/paas/v4/chat/completions",
+      "https://opencode.ai/zen/go/v1/chat/completions",
       {
         method: "POST",
         headers: {
@@ -42,7 +42,7 @@ export class ZaiMcpClient {
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
-          model: "glm-4.6v",
+          model: "mimo-v2-omni",
           messages: [
             {
               role: "user",

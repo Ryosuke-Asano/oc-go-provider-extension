@@ -1,6 +1,6 @@
 /**
- * Type definitions for Z.ai API compatibility
- * Based on OpenAI-compatible API format
+ * Type definitions for OpenCode Go API compatibility
+ * Supports both OpenAI-compatible and Anthropic-compatible API formats
  */
 
 export type Json =
@@ -15,7 +15,7 @@ export type JsonObject = { [k: string]: Json };
 /**
  * Content part for chat messages
  */
-export interface ZaiContentPart {
+export interface OcGoContentPart {
   type: "text" | "image_url";
   text?: string;
   image_url?: {
@@ -23,15 +23,15 @@ export interface ZaiContentPart {
   };
 }
 
-export interface ZaiChatMessage {
+export interface OcGoChatMessage {
   role: "system" | "user" | "assistant" | "tool";
-  content: string | ZaiContentPart[];
+  content: string | OcGoContentPart[];
   name?: string;
-  tool_calls?: ZaiToolCall[];
+  tool_calls?: OcGoToolCall[];
   tool_call_id?: string;
 }
 
-export interface ZaiToolCall {
+export interface OcGoToolCall {
   id: string;
   /** Optional index used in streaming tool call deltas */
   index?: number;
@@ -42,7 +42,7 @@ export interface ZaiToolCall {
   };
 }
 
-export interface ZaiTool {
+export interface OcGoTool {
   type: "function";
   function: {
     name: string;
@@ -51,34 +51,34 @@ export interface ZaiTool {
   };
 }
 
-export interface ZaiChatRequest {
+export interface OcGoChatRequest {
   model: string;
-  messages: ZaiChatMessage[];
+  messages: OcGoChatMessage[];
   temperature?: number;
   max_tokens?: number;
   stream?: boolean;
   top_p?: number;
   stop?: string | string[];
-  tools?: ZaiTool[];
+  tools?: OcGoTool[];
   tool_choice?: "auto" | "none" | { type: string; function: { name: string } };
 }
 
-export interface ZaiChatChoice {
+export interface OcGoChatChoice {
   index: number;
   message: {
     role: string;
     content: string | null;
-    tool_calls?: ZaiToolCall[];
+    tool_calls?: OcGoToolCall[];
   };
   finish_reason: string;
 }
 
-export interface ZaiChatResponse {
+export interface OcGoChatResponse {
   id: string;
   object: string;
   created: number;
   model: string;
-  choices: ZaiChatChoice[];
+  choices: OcGoChatChoice[];
   usage: {
     prompt_tokens: number;
     completion_tokens: number;
@@ -86,23 +86,23 @@ export interface ZaiChatResponse {
   };
 }
 
-export interface ZaiStreamChoice {
+export interface OcGoStreamChoice {
   index: number;
   delta: {
     role?: string;
     content?: string;
     reasoning_content?: string;
-    tool_calls?: ZaiToolCall[];
+    tool_calls?: OcGoToolCall[];
   };
   finish_reason: string | null;
 }
 
-export interface ZaiStreamResponse {
+export interface OcGoStreamResponse {
   id: string;
   object: string;
   created: number;
   model: string;
-  choices: ZaiStreamChoice[];
+  choices: OcGoStreamChoice[];
   usage?: {
     prompt_tokens?: number;
     completion_tokens?: number;
@@ -111,9 +111,14 @@ export interface ZaiStreamResponse {
 }
 
 /**
- * Model information for Z.ai models
+ * API format used by a model
  */
-export interface ZaiModelInfo {
+export type OcGoApiFormat = "openai" | "anthropic";
+
+/**
+ * Model information for OpenCode Go models
+ */
+export interface OcGoModelInfo {
   id: string;
   name: string;
   displayName: string;
@@ -121,133 +126,221 @@ export interface ZaiModelInfo {
   maxOutput: number;
   supportsTools: boolean;
   supportsVision: boolean;
-  /**
-   * When true, the model is internal-only and should not be exposed to users.
-   * For example, `glm-5v-turbo` may be kept for internal vision fallback.
-   */
-  internal?: boolean;
+  apiFormat: OcGoApiFormat;
 }
 
 /**
- * A strongly-typed request body used for Z.ai Chat API requests
+ * A strongly-typed request body used for OpenCode Go Chat API requests
  */
-export interface ZaiRequestBody {
+export interface OcGoRequestBody {
   model: string;
-  messages: ZaiChatMessage[];
+  messages: OcGoChatMessage[];
   stream?: boolean;
   stream_options?: { include_usage?: boolean };
   max_tokens?: number;
   temperature?: number;
-  thinking?: { type: string };
   stop?: string | string[];
   frequency_penalty?: number;
   presence_penalty?: number;
-  tools?: ZaiTool[];
+  tools?: OcGoTool[];
   tool_choice?: "auto" | "none" | { type: string; function: { name: string } };
 }
 
+// ============================================================================
+// Anthropic Messages API types
+// Used by MiniMax M2.5 and M2.7 via OpenCode Go proxy
+// ============================================================================
+
+/** Anthropic message content block */
+export type AnthropicContentBlock =
+  | { type: "text"; text: string }
+  | {
+      type: "image";
+      source: { type: "base64"; media_type: string; data: string };
+    }
+  | { type: "tool_use"; id: string; name: string; input: JsonObject }
+  | {
+      type: "tool_result";
+      tool_use_id: string;
+      content: string | AnthropicContentBlock[];
+    };
+
+/** Anthropic message format */
+export interface AnthropicMessage {
+  role: "user" | "assistant";
+  content: string | AnthropicContentBlock[];
+}
+
+/** Anthropic tool definition */
+export interface AnthropicTool {
+  name: string;
+  description?: string;
+  input_schema: JsonObject;
+}
+
+/** Anthropic request body */
+export interface AnthropicRequestBody {
+  model: string;
+  messages: AnthropicMessage[];
+  system?: string | Array<{ type: "text"; text: string }>;
+  max_tokens: number;
+  stream?: boolean;
+  temperature?: number;
+  top_p?: number;
+  stop_sequences?: string[];
+  tools?: AnthropicTool[];
+  tool_choice?: "auto" | "any" | { type: "tool"; name: string };
+}
+
+/** Anthropic response */
+export interface AnthropicResponse {
+  id: string;
+  type: "message";
+  role: "assistant";
+  content: AnthropicContentBlock[];
+  model: string;
+  stop_reason: string | null;
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+  };
+}
+
+/** Anthropic SSE event types */
+export interface AnthropicMessageStartEvent {
+  type: "message_start";
+  message: {
+    id: string;
+    type: "message";
+    role: "assistant";
+    content: AnthropicContentBlock[];
+    model: string;
+    stop_reason: string | null;
+    usage: { input_tokens: number; output_tokens: number };
+  };
+}
+
+export interface AnthropicContentBlockStartEvent {
+  type: "content_block_start";
+  index: number;
+  content_block: AnthropicContentBlock;
+}
+
+export interface AnthropicContentBlockDeltaEvent {
+  type: "content_block_delta";
+  index: number;
+  delta:
+    | { type: "text_delta"; text: string }
+    | { type: "input_json_delta"; partial_json: string }
+    | { type: "thinking_delta"; thinking: string };
+}
+
+export interface AnthropicContentBlockStopEvent {
+  type: "content_block_stop";
+  index: number;
+}
+
+export interface AnthropicMessageDeltaEvent {
+  type: "message_delta";
+  delta: {
+    stop_reason: string | null;
+    stop_sequence: string | null;
+  };
+  usage: {
+    output_tokens: number;
+  };
+}
+
+export interface AnthropicMessageStopEvent {
+  type: "message_stop";
+}
+
+export type AnthropicSSEEvent =
+  | AnthropicMessageStartEvent
+  | AnthropicContentBlockStartEvent
+  | AnthropicContentBlockDeltaEvent
+  | AnthropicContentBlockStopEvent
+  | AnthropicMessageDeltaEvent
+  | AnthropicMessageStopEvent;
+
 /**
- * Available Z.ai models configuration
+ * Available OpenCode Go models configuration
+ *
+ * Models using the OpenAI-compatible endpoint (chat/completions):
+ *   GLM-5, GLM-5.1, Kimi K2.5, MiMo-V2-Pro, MiMo-V2-Omni
+ *
+ * Models using the Anthropic-compatible endpoint (messages):
+ *   MiniMax M2.5, MiniMax M2.7
  */
-export const ZAI_MODELS: ZaiModelInfo[] = [
-  {
-    id: "glm-4.5",
-    name: "GLM-4.5",
-    displayName: "GLM-4.5",
-    contextWindow: 131072,
-    maxOutput: 98304,
-    supportsTools: true,
-    supportsVision: false, // Text-only model
-  },
-  {
-    id: "glm-4.5-air",
-    name: "GLM-4.5 Air",
-    displayName: "GLM-4.5 Air",
-    contextWindow: 131072,
-    maxOutput: 98304,
-    supportsTools: true,
-    supportsVision: false, // Text-only model
-  },
-  {
-    id: "glm-4.6",
-    name: "GLM-4.6",
-    displayName: "GLM-4.6",
-    contextWindow: 204800,
-    maxOutput: 204800,
-    supportsTools: true,
-    supportsVision: false, // Text-only model
-  },
-  {
-    id: "glm-4.7",
-    name: "GLM-4.7",
-    displayName: "GLM-4.7",
-    contextWindow: 202752,
-    maxOutput: 65535,
-    supportsTools: true,
-    supportsVision: false, // Text-only model
-  },
-  {
-    id: "glm-4.7-flash",
-    name: "GLM-4.7 Flash",
-    displayName: "GLM-4.7 Flash",
-    contextWindow: 202752,
-    maxOutput: 65535,
-    supportsTools: true,
-    supportsVision: false, // No vision support
-  },
+export const OC_GO_MODELS: OcGoModelInfo[] = [
   {
     id: "glm-5",
     name: "GLM-5",
-    displayName: "GLM-5",
+    displayName: "GLM-5 (OpenCode Go)",
     contextWindow: 202752,
     maxOutput: 131072,
     supportsTools: true,
-    supportsVision: false, // Text-only model
+    supportsVision: false,
+    apiFormat: "openai",
   },
   {
     id: "glm-5.1",
     name: "GLM-5.1",
-    displayName: "GLM-5.1",
+    displayName: "GLM-5.1 (OpenCode Go)",
     contextWindow: 202752,
     maxOutput: 131072,
     supportsTools: true,
-    supportsVision: false, // Text-only model
+    supportsVision: false,
+    apiFormat: "openai",
   },
   {
-    id: "glm-5-turbo",
-    name: "GLM-5-Turbo",
-    displayName: "GLM-5-Turbo",
-    contextWindow: 202752,
-    maxOutput: 131072,
+    id: "kimi-k2.5",
+    name: "Kimi K2.5",
+    displayName: "Kimi K2.5 (OpenCode Go)",
+    contextWindow: 131072,
+    maxOutput: 8192,
     supportsTools: true,
-    supportsVision: false, // Text-only model
+    supportsVision: true,
+    apiFormat: "openai",
   },
   {
-    id: "glm-4.6v",
-    name: "GLM-4.6V",
-    displayName: "GLM-4.6V",
+    id: "mimo-v2-pro",
+    name: "MiMo-V2-Pro",
+    displayName: "MiMo-V2-Pro (OpenCode Go)",
+    contextWindow: 131072,
+    maxOutput: 16384,
+    supportsTools: true,
+    supportsVision: false,
+    apiFormat: "openai",
+  },
+  {
+    id: "mimo-v2-omni",
+    name: "MiMo-V2-Omni",
+    displayName: "MiMo-V2-Omni (OpenCode Go)",
     contextWindow: 131072,
     maxOutput: 16384,
     supportsTools: true,
     supportsVision: true,
-    internal: true, // Internal-only vision fallback, not user-selectable
+    apiFormat: "openai",
   },
   {
-    id: "glm-5v-turbo",
-    name: "GLM-5V-Turbo",
-    displayName: "GLM-5V-Turbo",
-    contextWindow: 202752,
-    maxOutput: 131072,
+    id: "minimax-m2.5",
+    name: "MiniMax M2.5",
+    displayName: "MiniMax M2.5 (OpenCode Go)",
+    contextWindow: 1048576,
+    maxOutput: 16384,
     supportsTools: true,
-    supportsVision: true, // Multimodal coding model
+    supportsVision: false,
+    apiFormat: "anthropic",
   },
   {
-    id: "glm-5-code",
-    name: "GLM-5-Code",
-    displayName: "GLM-5-Code",
-    contextWindow: 202752,
-    maxOutput: 131072,
+    id: "minimax-m2.7",
+    name: "MiniMax M2.7",
+    displayName: "MiniMax M2.7 (OpenCode Go)",
+    contextWindow: 1048576,
+    maxOutput: 16384,
     supportsTools: true,
-    supportsVision: false, // Text-only model
+    supportsVision: false,
+    apiFormat: "anthropic",
   },
 ];

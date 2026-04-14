@@ -13,15 +13,19 @@ import {
 } from "vscode";
 
 import type {
-  ZaiModelInfo,
-  ZaiStreamResponse,
+  OcGoModelInfo,
+  OcGoStreamResponse,
   Json,
-  ZaiRequestBody,
+  OcGoRequestBody,
+  AnthropicRequestBody,
+  AnthropicSSEEvent,
 } from "./types";
-import { ZAI_MODELS } from "./types";
+import { OC_GO_MODELS } from "./types";
 import {
   convertMessages,
   convertTools,
+  convertMessagesToAnthropic,
+  convertToolsToAnthropic,
   tryParseJSONObject,
   estimateTokens,
   validateRequest,
@@ -30,12 +34,12 @@ import {
   extractImageData,
 } from "./utils";
 import type { LegacyPart } from "./utils";
-import { ZaiMcpClient } from "./mcp";
+import { OcGoMcpClient } from "./mcp";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 
-const DEBUG_LOG_PATH = path.join(os.homedir(), "zai-debug.log");
+const DEBUG_LOG_PATH = path.join(os.homedir(), "oc-go-debug.log");
 
 function debugLog(msg: string, data?: Record<string, unknown>): void {
   const timestamp = new Date().toISOString();
@@ -49,15 +53,15 @@ function debugLog(msg: string, data?: Record<string, unknown>): void {
   }
 }
 
-const BASE_URL = "https://api.z.ai/api/coding/paas/v4";
+const BASE_URL = "https://opencode.ai/zen/go/v1";
 const MAX_TOOL_RESULT_CHARS = 20000;
 const MAX_TOOLS_PER_REQUEST = 128;
 const DEFAULT_MAX_TOKENS = 65536;
 
 /**
- * VS Code Chat provider backed by Z.ai API.
+ * VS Code Chat provider backed by OpenCode Go API.
  */
-export class ZaiChatModelProvider implements LanguageModelChatProvider {
+export class OcGoChatModelProvider implements LanguageModelChatProvider {
   /** Buffer for assembling streamed tool calls by index. */
   private _toolCallBuffers: Map<
     number,
@@ -89,12 +93,6 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
   /** Deduplicate tool calls parsed from text and structured deltas */
   private _emittedTextToolCallKeys = new Set<string>();
   private _emittedTextToolCallIds = new Set<string>();
-
-  /** Track if we emitted any thinking/reasoning content */
-  private _hasEmittedThinkingContent = false;
-
-  /** Buffer for reasoning content from thinking mode */
-  private _reasoningContentBuffer = "";
 
   /** Track token usage from API responses */
   private _usageMetrics: { prompt_tokens: number; completion_tokens: number } =
@@ -133,7 +131,7 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
     statusText: string,
     details: string
   ): Error {
-    const message = `Z.ai API error: ${status} ${statusText}${details ? `\n${details}` : ""}`;
+    const message = `OpenCode Go API error: ${status} ${statusText}${details ? `\n${details}` : ""}`;
     if (status === 401 || status === 403) {
       return vscode.LanguageModelError.NoPermissions(message);
     }
@@ -146,28 +144,8 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
     return new Error(message);
   }
 
-  /**
-   * Format reasoning content with proper markdown formatting.
-   * Each line is prefixed with '> ' for quote block display.
-   */
-  private formatReasoningContent(content: string, isComplete: boolean): string {
-    // Normalize line endings and trim
-    const normalized = content.replace(/\r\n/g, "\n").trim();
-
-    // Split into lines and add quote prefix to each
-    const quotedLines = normalized
-      .split("\n")
-      .map((line) => `> ${line}`)
-      .join("\n");
-
-    const header = isComplete
-      ? "> **🧠 Thinking Process**"
-      : "> *🧠 Thinking...*";
-    return `${header}\n>\n${quotedLines}\n\n---\n\n`;
-  }
-
-  /** MCP client for GLM-OCR image processing and other tools */
-  private _mcpClient: ZaiMcpClient;
+  /** MCP client for image processing and other tools */
+  private _mcpClient: OcGoMcpClient;
 
   /**
    * Create a provider using the given secret storage for the API key.
@@ -178,15 +156,7 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
     private readonly secrets: vscode.SecretStorage,
     private readonly userAgent: string
   ) {
-    this._mcpClient = new ZaiMcpClient(secrets);
-  }
-
-  /**
-   * Get the configuration setting for enabling thinking display.
-   */
-  private isThinkingEnabled(): boolean {
-    const config = vscode.workspace.getConfiguration("zai");
-    return config.get<boolean>("enableThinking", true);
+    this._mcpClient = new OcGoMcpClient(secrets);
   }
 
   /**
@@ -200,27 +170,27 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
     _token: CancellationToken
   ): Promise<LanguageModelChatInformation[]> {
     this._debugCallCount++;
-    console.log("[Z.ai Provider] provideLanguageModelChatInformation called", {
-      silent: options.silent,
-      callCount: this._debugCallCount,
-      timestamp: new Date().toISOString(),
-    });
+    console.log(
+      "[OpenCode Go Provider] provideLanguageModelChatInformation called",
+      {
+        silent: options.silent,
+        callCount: this._debugCallCount,
+        timestamp: new Date().toISOString(),
+      }
+    );
     const apiKey = await this.ensureApiKey(options.silent);
     if (!apiKey) {
-      console.log("[Z.ai Provider] No API key, returning empty list");
+      console.log("[OpenCode Go Provider] No API key, returning empty list");
       return [];
     }
 
     // Import models from types
-    const { ZAI_MODELS: models } = await import("./types");
-    const publicModels = models.filter((m) => !m.internal);
-    console.log(
-      `[Z.ai Provider] Found ${models.length} models (${publicModels.length} public)`
-    );
+    const { OC_GO_MODELS: models } = await import("./types");
+    console.log(`[OpenCode Go Provider] Found ${models.length} models`);
 
-    const infos: LanguageModelChatInformation[] = publicModels.map(
-      (model: ZaiModelInfo) => {
-        console.log(`[Z.ai Provider] Model info: ${model.id}`, {
+    const infos: LanguageModelChatInformation[] = models.map(
+      (model: OcGoModelInfo) => {
+        console.log(`[OpenCode Go Provider] Model info: ${model.id}`, {
           supportsVision: model.supportsVision,
           supportsTools: model.supportsTools,
           contextWindow: model.contextWindow,
@@ -229,11 +199,14 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
         return {
           id: model.id,
           name: model.displayName,
-          detail: "Z.ai",
-          tooltip: `Z.ai ${model.name}`,
-          family: "zai",
+          detail: "OpenCode Go",
+          tooltip: `OpenCode Go ${model.name}`,
+          family: "opencode-go",
           version: "1.0.0",
-          maxInputTokens: Math.max(1, model.contextWindow - Math.min(model.maxOutput, DEFAULT_MAX_TOKENS)),
+          maxInputTokens: Math.max(
+            1,
+            model.contextWindow - Math.min(model.maxOutput, DEFAULT_MAX_TOKENS)
+          ),
           maxOutputTokens: model.maxOutput,
           capabilities: {
             toolCalling: model.supportsTools ? MAX_TOOLS_PER_REQUEST : false,
@@ -243,7 +216,7 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
       }
     );
 
-    console.log(`[Z.ai Provider] Returning ${infos.length} models`);
+    console.log(`[OpenCode Go Provider] Returning ${infos.length} models`);
     return infos;
   }
 
@@ -251,7 +224,7 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
    * Check if model supports vision natively
    */
   private modelSupportsVision(modelId: string): boolean {
-    const modelInfo = ZAI_MODELS.find((m) => m.id === modelId);
+    const modelInfo = OC_GO_MODELS.find((m) => m.id === modelId);
     return modelInfo?.supportsVision ?? false;
   }
 
@@ -259,13 +232,13 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
    * Pick a fallback vision model for image input
    */
   private getVisionFallbackModelId(): string | undefined {
-    const preferred = ZAI_MODELS.find(
-      (m) => m.id === "glm-4.6v" && m.supportsVision
+    const preferred = OC_GO_MODELS.find(
+      (m) => m.id === "mimo-v2-omni" && m.supportsVision
     );
     if (preferred) {
       return preferred.id;
     }
-    return ZAI_MODELS.find((m) => m.supportsVision)?.id;
+    return OC_GO_MODELS.find((m) => m.supportsVision)?.id;
   }
 
   /**
@@ -287,14 +260,14 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
   /**
    * Get model info by id
    */
-  private getModelInfo(modelId: string): ZaiModelInfo | undefined {
-    return ZAI_MODELS.find((m) => m.id === modelId);
+  private getModelInfo(modelId: string): OcGoModelInfo | undefined {
+    return OC_GO_MODELS.find((m) => m.id === modelId);
   }
 
   /**
    * Rough token estimate for tool definitions by JSON size.
    */
-  private estimateToolTokens(tools: ZaiRequestBody["tools"]): number {
+  private estimateToolTokens(tools: OcGoRequestBody["tools"]): number {
     if (!tools || tools.length === 0) {
       return 0;
     }
@@ -422,7 +395,7 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
         try {
           progress.report(part);
         } catch (e) {
-          console.error("[Z.ai Model Provider] Progress.report failed", {
+          console.error("[OpenCode Go Model Provider] Progress.report failed", {
             modelId: model.id,
             error:
               e instanceof Error
@@ -436,7 +409,9 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
     try {
       const apiKey = await this.ensureApiKey(true);
       if (!apiKey) {
-        throw vscode.LanguageModelError.NoPermissions("Z.ai API key not found");
+        throw vscode.LanguageModelError.NoPermissions(
+          "OpenCode Go API key not found"
+        );
       }
 
       const hasImages = this.hasImageInput(messages);
@@ -450,7 +425,7 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
           const visionFallback = this.getVisionFallbackModelId();
           if (visionFallback && visionFallback !== model.id) {
             console.warn(
-              "[Z.ai Model Provider] Switching to vision model for image input",
+              "[OpenCode Go Model Provider] Switching to vision model for image input",
               {
                 originalModel: model.id,
                 visionModel: visionFallback,
@@ -460,7 +435,7 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
             usedVisionFallback = true;
           } else {
             console.warn(
-              "[Z.ai Model Provider] No vision model available, using OCR fallback"
+              "[OpenCode Go Model Provider] No vision model available, using OCR fallback"
             );
             const result = await this.processImagesForNonVisionModel(
               messages,
@@ -478,18 +453,17 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
         );
       }
 
-      const toolConfig = convertTools(options);
-      const zaiMessages = convertMessages(processedMessages, {
-        maxToolResultChars: MAX_TOOL_RESULT_CHARS,
-      });
       validateRequest(processedMessages);
+
+      // Determine API format based on model
+      const effectiveModelInfo = this.getModelInfo(effectiveModelId);
+      const apiFormat = effectiveModelInfo?.apiFormat ?? "openai";
+      const isAnthropic = apiFormat === "anthropic";
 
       // Estimate tokens (rough approximation)
       const inputTokenCount = estimateMessagesTokens(processedMessages, {
         maxToolResultChars: MAX_TOOL_RESULT_CHARS,
       });
-      const toolTokenCount = this.estimateToolTokens(toolConfig.tools);
-      const effectiveModelInfo = this.getModelInfo(effectiveModelId);
       const mo = options.modelOptions as Record<string, Json> | undefined;
       const maxTokensVal =
         typeof mo?.max_tokens === "number" ? mo.max_tokens : DEFAULT_MAX_TOKENS;
@@ -507,9 +481,27 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
           ? effectiveModelInfo.contextWindow
           : model.maxInputTokens
       );
+
+      let toolTokenCount = 0;
+      if (isAnthropic) {
+        // Estimate Anthropic tool tokens
+        const anthropicToolConfig = convertToolsToAnthropic(options);
+        try {
+          toolTokenCount = anthropicToolConfig.tools
+            ? Math.ceil(JSON.stringify(anthropicToolConfig.tools).length / 4)
+            : 0;
+        } catch {
+          toolTokenCount = 0;
+        }
+      } else {
+        const toolConfig = convertTools(options);
+        toolTokenCount = this.estimateToolTokens(toolConfig.tools);
+      }
+
       const totalEstimatedTokens = inputTokenCount + toolTokenCount;
       debugLog("PRE-REQUEST", {
         model: effectiveModelId,
+        apiFormat,
         messageCount: processedMessages.length,
         inputTokenEstimate: inputTokenCount,
         toolTokenEstimate: toolTokenCount,
@@ -521,178 +513,57 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
         utilizationPct: Math.round((totalEstimatedTokens / tokenLimit) * 100),
       });
       if (totalEstimatedTokens > tokenLimit) {
-        console.error("[Z.ai Model Provider] Message exceeds token limit", {
-          total: totalEstimatedTokens,
-          messageTokens: inputTokenCount,
-          toolTokens: toolTokenCount,
-          tokenLimit,
-          requestedMaxTokens,
-        });
+        console.error(
+          "[OpenCode Go Model Provider] Message exceeds token limit",
+          {
+            total: totalEstimatedTokens,
+            messageTokens: inputTokenCount,
+            toolTokens: toolTokenCount,
+            tokenLimit,
+            requestedMaxTokens,
+          }
+        );
         throw new Error("Message exceeds token limit.");
       }
-      const requestBody: ZaiRequestBody = {
-        model: effectiveModelId,
-        messages: zaiMessages,
-        stream: true,
-        stream_options: { include_usage: true },
-        max_tokens: requestedMaxTokens,
-        temperature: temperatureVal,
-      };
-
-      // Enable thinking mode if setting is enabled
-      if (this.isThinkingEnabled()) {
-        requestBody.thinking = {
-          type: "enabled",
-        };
-      }
-
-      // Allow-list model options
-      if (mo) {
-        if (typeof mo.stop === "string") {
-          requestBody.stop = mo.stop;
-        } else if (
-          Array.isArray(mo.stop) &&
-          mo.stop.every((s) => typeof s === "string")
-        ) {
-          requestBody.stop = mo.stop;
-        }
-        if (typeof mo.frequency_penalty === "number") {
-          requestBody.frequency_penalty = mo.frequency_penalty;
-        }
-        if (typeof mo.presence_penalty === "number") {
-          requestBody.presence_penalty = mo.presence_penalty;
-        }
-      }
-
-      if (toolConfig.tools) {
-        requestBody.tools = toolConfig.tools;
-      }
-      if (toolConfig.tool_choice) {
-        requestBody.tool_choice = toolConfig.tool_choice;
-      }
-
-      console.log("[Z.ai Model Provider] 🚀 Starting chat request", {
-        model: effectiveModelId,
-        messageCount: messages.length,
-        thinkingEnabled: this.isThinkingEnabled(),
-        includeUsage: true,
-        timestamp: new Date().toISOString(),
-      });
 
       if (token.isCancellationRequested) {
         throw new vscode.CancellationError();
       }
-      const response = await fetch(`${BASE_URL}/chat/completions`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "User-Agent": this.userAgent,
-        },
-        signal: abortController.signal,
-        body: JSON.stringify(requestBody),
+
+      console.log("[OpenCode Go Model Provider] 🚀 Starting chat request", {
+        model: effectiveModelId,
+        apiFormat,
+        messageCount: messages.length,
+        timestamp: new Date().toISOString(),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("[Z.ai Model Provider] API error response", errorText);
-
-        // If vision fallback failed due to subscription limits (429 + code 1311),
-        // fall back to OCR processing on the original model instead.
-        if (
-          usedVisionFallback &&
-          response.status === 429 &&
-          errorText.includes("1311")
-        ) {
-          console.warn(
-            "[Z.ai Model Provider] Vision model unavailable on subscription, falling back to OCR",
-            { originalModel: model.id, failedVisionModel: effectiveModelId }
-          );
-
-          // Reset to original model and process images via OCR
-          effectiveModelId = model.id;
-          const ocrResult = await this.processImagesForNonVisionModel(
-            messages,
-            model.id,
-            token
-          );
-          processedMessages = ocrResult.processedMessages;
-
-          // Rebuild request with original model + OCR'd messages
-          const ocrZaiMessages = convertMessages(processedMessages, {
-            maxToolResultChars: MAX_TOOL_RESULT_CHARS,
-          });
-          const ocrRequestBody: ZaiRequestBody = {
-            model: effectiveModelId,
-            messages: ocrZaiMessages,
-            stream: true,
-            stream_options: { include_usage: true },
-            max_tokens: requestedMaxTokens,
-            temperature: temperatureVal,
-          };
-          if (this.isThinkingEnabled()) {
-            ocrRequestBody.thinking = { type: "enabled" };
-          }
-          if (toolConfig.tools) {
-            ocrRequestBody.tools = toolConfig.tools;
-          }
-          if (toolConfig.tool_choice) {
-            ocrRequestBody.tool_choice = toolConfig.tool_choice;
-          }
-
-          console.log("[Z.ai Model Provider] 🔄 Retrying with OCR fallback", {
-            model: effectiveModelId,
-          });
-
-          const retryResponse = await fetch(`${BASE_URL}/chat/completions`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-              "User-Agent": this.userAgent,
-            },
-            signal: abortController.signal,
-            body: JSON.stringify(ocrRequestBody),
-          });
-
-          if (!retryResponse.ok) {
-            const retryErrorText = await retryResponse.text();
-            console.error(
-              "[Z.ai Model Provider] OCR fallback also failed",
-              retryErrorText
-            );
-            throw this.toLanguageModelError(
-              retryResponse.status,
-              retryResponse.statusText,
-              retryErrorText
-            );
-          }
-
-          if (!retryResponse.body) {
-            throw new Error("No response body from Z.ai API");
-          }
-
-          await this.processStreamingResponse(
-            retryResponse.body,
-            trackingProgress,
-            token
-          );
-        } else {
-          throw this.toLanguageModelError(
-            response.status,
-            response.statusText,
-            errorText
-          );
-        }
-      } else {
-        if (!response.body) {
-          throw new Error("No response body from Z.ai API");
-        }
-
-        await this.processStreamingResponse(
-          response.body,
+      // Dispatch based on API format
+      if (isAnthropic) {
+        await this.handleAnthropicRequest(
+          effectiveModelId,
+          processedMessages,
+          options,
+          apiKey,
+          requestedMaxTokens,
+          temperatureVal,
           trackingProgress,
-          token
+          token,
+          abortController
+        );
+      } else {
+        await this.handleOpenAIRequest(
+          effectiveModelId,
+          processedMessages,
+          options,
+          apiKey,
+          requestedMaxTokens,
+          temperatureVal,
+          mo,
+          trackingProgress,
+          token,
+          abortController,
+          usedVisionFallback,
+          model.id
         );
       }
     } catch (err) {
@@ -702,7 +573,7 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
       ) {
         throw new vscode.CancellationError();
       }
-      console.error("[Z.ai Model Provider] Chat request failed", {
+      console.error("[OpenCode Go Model Provider] Chat request failed", {
         modelId: model.id,
         messageCount: messages.length,
         error:
@@ -713,6 +584,405 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
       throw err;
     } finally {
       cancellationSubscription.dispose();
+    }
+  }
+
+  /**
+   * Handle OpenAI-format API request (chat/completions endpoint)
+   */
+  private async handleOpenAIRequest(
+    effectiveModelId: string,
+    processedMessages: readonly LanguageModelChatMessage[],
+    options: ProvideLanguageModelChatResponseOptions,
+    apiKey: string,
+    requestedMaxTokens: number,
+    temperatureVal: number,
+    mo: Record<string, Json> | undefined,
+    trackingProgress: Progress<LanguageModelResponsePart>,
+    token: CancellationToken,
+    abortController: AbortController,
+    usedVisionFallback: boolean,
+    originalModelId: string
+  ): Promise<void> {
+    const toolConfig = convertTools(options);
+    const apiMessages = convertMessages(processedMessages, {
+      maxToolResultChars: MAX_TOOL_RESULT_CHARS,
+    });
+
+    const requestBody: OcGoRequestBody = {
+      model: effectiveModelId,
+      messages: apiMessages,
+      stream: true,
+      stream_options: { include_usage: true },
+      max_tokens: requestedMaxTokens,
+      temperature: temperatureVal,
+    };
+
+    // Allow-list model options
+    if (mo) {
+      if (typeof mo.stop === "string") {
+        requestBody.stop = mo.stop;
+      } else if (
+        Array.isArray(mo.stop) &&
+        mo.stop.every((s) => typeof s === "string")
+      ) {
+        requestBody.stop = mo.stop;
+      }
+      if (typeof mo.frequency_penalty === "number") {
+        requestBody.frequency_penalty = mo.frequency_penalty;
+      }
+      if (typeof mo.presence_penalty === "number") {
+        requestBody.presence_penalty = mo.presence_penalty;
+      }
+    }
+
+    if (toolConfig.tools) {
+      requestBody.tools = toolConfig.tools;
+    }
+    if (toolConfig.tool_choice) {
+      requestBody.tool_choice = toolConfig.tool_choice;
+    }
+
+    const response = await fetch(`${BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "User-Agent": this.userAgent,
+      },
+      signal: abortController.signal,
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        "[OpenCode Go Model Provider] API error response",
+        errorText
+      );
+
+      // If vision fallback failed due to subscription limits (429 + code 1311),
+      // fall back to OCR processing on the original model instead.
+      if (
+        usedVisionFallback &&
+        response.status === 429 &&
+        errorText.includes("1311")
+      ) {
+        console.warn(
+          "[OpenCode Go Model Provider] Vision model unavailable on subscription, falling back to OCR",
+          {
+            originalModel: originalModelId,
+            failedVisionModel: effectiveModelId,
+          }
+        );
+
+        // Reset to original model and process images via OCR
+        effectiveModelId = originalModelId;
+        const ocrResult = await this.processImagesForNonVisionModel(
+          processedMessages,
+          originalModelId,
+          token
+        );
+        processedMessages = ocrResult.processedMessages;
+
+        // Rebuild request with original model + OCR'd messages
+        const ocrApiMessages = convertMessages(processedMessages, {
+          maxToolResultChars: MAX_TOOL_RESULT_CHARS,
+        });
+        const ocrRequestBody: OcGoRequestBody = {
+          model: effectiveModelId,
+          messages: ocrApiMessages,
+          stream: true,
+          stream_options: { include_usage: true },
+          max_tokens: requestedMaxTokens,
+          temperature: temperatureVal,
+        };
+        if (toolConfig.tools) {
+          ocrRequestBody.tools = toolConfig.tools;
+        }
+        if (toolConfig.tool_choice) {
+          ocrRequestBody.tool_choice = toolConfig.tool_choice;
+        }
+
+        console.log(
+          "[OpenCode Go Model Provider] 🔄 Retrying with OCR fallback",
+          {
+            model: effectiveModelId,
+          }
+        );
+
+        const retryResponse = await fetch(`${BASE_URL}/chat/completions`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "User-Agent": this.userAgent,
+          },
+          signal: abortController.signal,
+          body: JSON.stringify(ocrRequestBody),
+        });
+
+        if (!retryResponse.ok) {
+          const retryErrorText = await retryResponse.text();
+          console.error(
+            "[OpenCode Go Model Provider] OCR fallback also failed",
+            retryErrorText
+          );
+          throw this.toLanguageModelError(
+            retryResponse.status,
+            retryResponse.statusText,
+            retryErrorText
+          );
+        }
+
+        if (!retryResponse.body) {
+          throw new Error("No response body from OpenCode Go API");
+        }
+
+        await this.processStreamingResponse(
+          retryResponse.body,
+          trackingProgress,
+          token
+        );
+      } else {
+        throw this.toLanguageModelError(
+          response.status,
+          response.statusText,
+          errorText
+        );
+      }
+    } else {
+      if (!response.body) {
+        throw new Error("No response body from OpenCode Go API");
+      }
+
+      await this.processStreamingResponse(
+        response.body,
+        trackingProgress,
+        token
+      );
+    }
+  }
+
+  /**
+   * Handle Anthropic-format API request (/messages endpoint)
+   */
+  private async handleAnthropicRequest(
+    effectiveModelId: string,
+    processedMessages: readonly LanguageModelChatMessage[],
+    options: ProvideLanguageModelChatResponseOptions,
+    apiKey: string,
+    requestedMaxTokens: number,
+    temperatureVal: number,
+    trackingProgress: Progress<LanguageModelResponsePart>,
+    token: CancellationToken,
+    abortController: AbortController
+  ): Promise<void> {
+    const toolConfig = convertToolsToAnthropic(options);
+    const { messages: apiMessages, system } = convertMessagesToAnthropic(
+      processedMessages,
+      { maxToolResultChars: MAX_TOOL_RESULT_CHARS }
+    );
+
+    if (apiMessages.length === 0) {
+      throw new Error("No messages to send to Anthropic API");
+    }
+
+    const safeMaxTokens = Math.max(1, requestedMaxTokens);
+
+    const requestBody: AnthropicRequestBody = {
+      model: effectiveModelId,
+      messages: apiMessages,
+      max_tokens: safeMaxTokens,
+      stream: true,
+    };
+
+    if (system) {
+      requestBody.system = system;
+    }
+
+    if (typeof temperatureVal === "number" && temperatureVal > 0) {
+      requestBody.temperature = temperatureVal;
+    }
+
+    if (toolConfig.tools && toolConfig.tools.length > 0) {
+      requestBody.tools = toolConfig.tools;
+      // Only set tool_choice when it's not the default "auto"
+      if (
+        toolConfig.tool_choice &&
+        toolConfig.tool_choice !== "auto"
+      ) {
+        requestBody.tool_choice = toolConfig.tool_choice;
+      }
+    }
+
+    console.log("[OpenCode Go Model Provider] Anthropic request body", {
+      model: requestBody.model,
+      system: requestBody.system,
+      messagesCount: requestBody.messages.length,
+      messages: requestBody.messages,
+      toolsCount: requestBody.tools?.length,
+      max_tokens: requestBody.max_tokens,
+      temperature: requestBody.temperature,
+      tool_choice: requestBody.tool_choice,
+    });
+
+    const response = await fetch(`${BASE_URL}/messages`, {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+        "User-Agent": this.userAgent,
+      },
+      signal: abortController.signal,
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        "[OpenCode Go Model Provider] Anthropic API error response",
+        errorText
+      );
+      throw this.toLanguageModelError(
+        response.status,
+        response.statusText,
+        errorText
+      );
+    }
+
+    if (!response.body) {
+      throw new Error("No response body from Anthropic API");
+    }
+
+    await this.processAnthropicStreamingResponse(
+      response.body,
+      trackingProgress,
+      token
+    );
+  }
+
+  /**
+   * Process an Anthropic-format streaming response (SSE events)
+   */
+  private async processAnthropicStreamingResponse(
+    body: ReadableStream<Uint8Array>,
+    progress: Progress<LanguageModelResponsePart>,
+    token: CancellationToken
+  ): Promise<void> {
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    // Track active tool_use blocks: index -> { id, name, inputJsonDelta }
+    const activeToolCalls = new Map<
+      number,
+      { id: string; name: string; inputJson: string }
+    >();
+
+    try {
+      while (!token.isCancellationRequested) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        // Keep the last incomplete line in the buffer
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith("data:")) {
+            continue;
+          }
+
+          const jsonStr = trimmed.slice(5).trim();
+          if (!jsonStr || jsonStr === "[DONE]") {
+            continue;
+          }
+
+          let event: AnthropicSSEEvent;
+          try {
+            event = JSON.parse(jsonStr) as AnthropicSSEEvent;
+          } catch {
+            continue;
+          }
+
+          switch (event.type) {
+            case "message_start":
+              // Initial message metadata — nothing to emit
+              break;
+
+            case "content_block_start": {
+              if (event.content_block?.type === "tool_use") {
+                const idx = event.index;
+                const toolId =
+                  event.content_block.id ??
+                  `tu_${Math.random().toString(36).slice(2, 10)}`;
+                const toolName = event.content_block.name ?? "unknown_tool";
+                activeToolCalls.set(idx, {
+                  id: toolId,
+                  name: toolName,
+                  inputJson: "",
+                });
+              }
+              break;
+            }
+
+            case "content_block_delta": {
+              const deltaEvent = event;
+              if (deltaEvent.delta?.type === "text_delta") {
+                const text = deltaEvent.delta.text ?? "";
+                if (text) {
+                  progress.report(new vscode.LanguageModelTextPart(text));
+                }
+              } else if (deltaEvent.delta?.type === "input_json_delta") {
+                const partialJson = deltaEvent.delta.partial_json ?? "";
+                const idx = event.index;
+                const tc = activeToolCalls.get(idx);
+                if (tc) {
+                  tc.inputJson += partialJson;
+                }
+              }
+              break;
+            }
+
+            case "content_block_stop": {
+              const idx = event.index;
+              const tc = activeToolCalls.get(idx);
+              if (tc) {
+                // Parse the accumulated JSON and emit the tool call
+                let input: Record<string, Json> = {};
+                if (tc.inputJson.trim()) {
+                  const parsed = tryParseJSONObject<Record<string, Json>>(
+                    tc.inputJson
+                  );
+                  if (parsed.ok) {
+                    input = parsed.value;
+                  }
+                }
+                progress.report(
+                  new vscode.LanguageModelToolCallPart(tc.id, tc.name, input)
+                );
+                activeToolCalls.delete(idx);
+              }
+              break;
+            }
+
+            case "message_delta":
+              // Contains stop_reason, usage — nothing to emit
+              break;
+
+            case "message_stop":
+              // Stream is done
+              break;
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
     }
   }
 
@@ -755,24 +1025,24 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
    * @param silent If true, do not prompt the user.
    */
   private async ensureApiKey(silent: boolean): Promise<string | undefined> {
-    let apiKey = await this.secrets.get("zai.apiKey");
+    let apiKey = await this.secrets.get("opencode-go.apiKey");
     if (!apiKey && !silent) {
       const entered = await vscode.window.showInputBox({
-        title: "Z.ai API Key",
-        prompt: "Enter your Z.ai API key",
+        title: "OpenCode Go API Key",
+        prompt: "Enter your OpenCode Go API key",
         ignoreFocusOut: true,
         password: true,
       });
       if (entered && entered.trim()) {
         apiKey = entered.trim();
-        await this.secrets.store("zai.apiKey", apiKey);
+        await this.secrets.store("opencode-go.apiKey", apiKey);
       }
     }
     return apiKey;
   }
 
   /**
-   * Read and parse the Z.ai streaming (SSE) response and report parts.
+   * Read and parse the OpenCode Go streaming (SSE) response and report parts.
    * @param responseBody The readable stream body.
    * @param progress Progress reporter for streamed parts.
    * @param token Cancellation token.
@@ -803,18 +1073,6 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
           }
           const data = line.slice(6);
           if (data === "[DONE]") {
-            // Flush any buffered reasoning content if thinking is enabled
-            if (this.isThinkingEnabled() && this._reasoningContentBuffer) {
-              const formattedReasoning = this.formatReasoningContent(
-                this._reasoningContentBuffer,
-                true // isComplete
-              );
-              const reasoningText = new vscode.LanguageModelTextPart(
-                formattedReasoning
-              );
-              progress.report(reasoningText);
-              this._reasoningContentBuffer = "";
-            }
             // Do not throw on DONE for incomplete tool call JSON.
             await this.flushToolCallBuffers(progress, false);
             await this.flushActiveTextToolCall(progress);
@@ -824,7 +1082,7 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
               apiCompletionTokens: this._usageMetrics.completion_tokens,
             });
             console.log(
-              "[Z.ai Model Provider] Stream [DONE], final usage metrics:",
+              "[OpenCode Go Model Provider] Stream [DONE], final usage metrics:",
               {
                 prompt_tokens: this._usageMetrics.prompt_tokens,
                 completion_tokens: this._usageMetrics.completion_tokens,
@@ -836,11 +1094,11 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
           }
 
           try {
-            const parsed = JSON.parse(data) as ZaiStreamResponse;
+            const parsed = JSON.parse(data) as OcGoStreamResponse;
             // Track usage metrics from the response
             if (parsed.usage) {
               console.log(
-                "[Z.ai Model Provider] Received usage in chunk:",
+                "[OpenCode Go Model Provider] Received usage in chunk:",
                 parsed.usage
               );
               if (parsed.usage.prompt_tokens !== undefined) {
@@ -856,7 +1114,7 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
               await this.processDelta(parsed, progress);
             } else if (parsed.usage) {
               console.log(
-                "[Z.ai Model Provider] Received usage-only final chunk:",
+                "[OpenCode Go Model Provider] Received usage-only final chunk:",
                 parsed.usage
               );
             }
@@ -884,8 +1142,6 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
       this._textToolActive = undefined;
       this._emittedTextToolCallKeys.clear();
       this._emittedTextToolCallIds.clear();
-      this._hasEmittedThinkingContent = false;
-      this._reasoningContentBuffer = "";
       this._usageMetrics = { prompt_tokens: 0, completion_tokens: 0 };
       this._usageReported = false;
     }
@@ -906,7 +1162,7 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
     ) {
       const totalTokens =
         this._usageMetrics.prompt_tokens + this._usageMetrics.completion_tokens;
-      console.log("[Z.ai Model Provider] Token usage metrics", {
+      console.log("[OpenCode Go Model Provider] Token usage metrics", {
         prompt_tokens: this._usageMetrics.prompt_tokens,
         completion_tokens: this._usageMetrics.completion_tokens,
         total_tokens: totalTokens,
@@ -920,12 +1176,12 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
               completion_tokens: this._usageMetrics.completion_tokens,
               total_tokens: totalTokens,
             },
-            "application/vnd.zai.usage+json"
+            "application/vnd.opencode-go.usage+json"
           )
         );
       } catch (e) {
         console.warn(
-          "[Z.ai Model Provider] Failed to report usage via progress",
+          "[OpenCode Go Model Provider] Failed to report usage via progress",
           e
         );
       }
@@ -935,11 +1191,11 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
 
   /**
    * Handle a single streamed delta chunk, emitting text and tool call parts.
-   * @param delta Parsed SSE chunk from Z.ai.
+   * @param delta Parsed SSE chunk from OpenCode Go.
    * @param progress Progress reporter for parts.
    */
   private async processDelta(
-    delta: ZaiStreamResponse,
+    delta: OcGoStreamResponse,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>
   ): Promise<boolean> {
     let emitted = false;
@@ -950,42 +1206,9 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
 
     const deltaObj = choice.delta;
 
-    // Handle reasoning content (thinking process) - only if thinking is enabled
-    if (this.isThinkingEnabled() && deltaObj?.reasoning_content) {
-      const reasoning = String(deltaObj.reasoning_content);
-      if (!this._hasEmittedThinkingContent) {
-        console.log(
-          "[Z.ai Model Provider] 🧠 Starting reasoning/thinking process...",
-          {
-            timestamp: new Date().toISOString(),
-          }
-        );
-      }
-      this._reasoningContentBuffer += reasoning;
-      this._hasEmittedThinkingContent = true;
-      emitted = true;
-    }
-
     // Handle text content
     if (deltaObj?.content) {
       const content = String(deltaObj.content);
-
-      // If we have reasoning content buffered and thinking is enabled, emit it first
-      if (this.isThinkingEnabled() && this._reasoningContentBuffer) {
-        console.log("[Z.ai Model Provider] 📦 Emitting reasoning content", {
-          length: this._reasoningContentBuffer.length,
-          timestamp: new Date().toISOString(),
-        });
-        const formattedReasoning = this.formatReasoningContent(
-          this._reasoningContentBuffer,
-          true
-        );
-        const reasoningText = new vscode.LanguageModelTextPart(
-          formattedReasoning
-        );
-        progress.report(reasoningText);
-        this._reasoningContentBuffer = "";
-      }
 
       const textResult = this.processTextContent(content, progress);
       if (textResult.emittedText) {
@@ -1398,10 +1621,13 @@ export class ZaiChatModelProvider implements LanguageModelChatProvider {
       const parsed = tryParseJSONObject<Record<string, Json>>(buf.args);
       if (!parsed.ok) {
         if (throwOnInvalid) {
-          console.error("[Z.ai Model Provider] Invalid JSON for tool call", {
-            idx,
-            snippet: (buf.args || "").slice(0, 200),
-          });
+          console.error(
+            "[OpenCode Go Model Provider] Invalid JSON for tool call",
+            {
+              idx,
+              snippet: (buf.args || "").slice(0, 200),
+            }
+          );
           throw new Error("Invalid JSON for tool call");
         }
         // When not throwing (e.g. on [DONE]), drop silently

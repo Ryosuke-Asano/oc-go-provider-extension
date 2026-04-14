@@ -2,7 +2,7 @@
 
 import * as vscode from "vscode";
 
-import { ZaiChatModelProvider } from "../src/provider";
+import { OcGoChatModelProvider } from "../src/provider";
 import { secrets } from "../__mocks__/vscode";
 
 function createDoneStream(): ReadableStream<Uint8Array> {
@@ -21,7 +21,7 @@ function createToken(): vscode.CancellationToken {
   } as unknown as vscode.CancellationToken;
 }
 
-describe("ZaiChatModelProvider", () => {
+describe("OcGoChatModelProvider", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (secrets.get as jest.Mock).mockResolvedValue("test-api-key");
@@ -35,7 +35,7 @@ describe("ZaiChatModelProvider", () => {
   });
 
   it("should expose the full context window as maxInputTokens", async () => {
-    const provider = new ZaiChatModelProvider(
+    const provider = new OcGoChatModelProvider(
       secrets as unknown as vscode.SecretStorage,
       "jest-agent"
     );
@@ -45,14 +45,14 @@ describe("ZaiChatModelProvider", () => {
       createToken()
     );
 
-    const glm47 = models.find((m) => m.id === "glm-4.7");
-    expect(glm47).toBeDefined();
-    expect(glm47?.maxInputTokens).toBe(202752 - Math.min(65535, 65536));
-    expect(glm47?.maxOutputTokens).toBe(65535);
+    const glm5 = models.find((m) => m.id === "glm-5");
+    expect(glm5).toBeDefined();
+    expect(glm5?.maxInputTokens).toBe(202752 - Math.min(131072, 65536));
+    expect(glm5?.maxOutputTokens).toBe(131072);
   });
 
   it("should allow prompts larger than the old reserved-output cap", async () => {
-    const provider = new ZaiChatModelProvider(
+    const provider = new OcGoChatModelProvider(
       secrets as unknown as vscode.SecretStorage,
       "jest-agent"
     );
@@ -85,7 +85,7 @@ describe("ZaiChatModelProvider", () => {
   });
 
   it("should use the official default max_tokens when not specified", async () => {
-    const provider = new ZaiChatModelProvider(
+    const provider = new OcGoChatModelProvider(
       secrets as unknown as vscode.SecretStorage,
       "jest-agent"
     );
@@ -93,9 +93,9 @@ describe("ZaiChatModelProvider", () => {
       { silent: true } as vscode.PrepareLanguageModelChatModelOptions,
       createToken()
     );
-    const glm47 = models.find((m) => m.id === "glm-4.7");
-    if (!glm47) {
-      throw new Error("glm-4.7 not found");
+    const kimiK25 = models.find((m) => m.id === "kimi-k2.5");
+    if (!kimiK25) {
+      throw new Error("kimi-k2.5 not found");
     }
 
     const messages = [vscode.LanguageModelChatMessage.User("hello")];
@@ -104,7 +104,7 @@ describe("ZaiChatModelProvider", () => {
     } as unknown as vscode.Progress<vscode.LanguageModelResponsePart>;
 
     await provider.provideLanguageModelChatResponse(
-      glm47,
+      kimiK25,
       messages,
       {},
       progress,
@@ -117,11 +117,11 @@ describe("ZaiChatModelProvider", () => {
     };
     expect(requestInit.body).toBeDefined();
     const requestBody = JSON.parse(requestInit.body ?? "{}");
-    expect(requestBody.max_tokens).toBe(65535);
+    expect(requestBody.max_tokens).toBe(8192);
   });
 
   it("should reject prompts that exceed the documented context window", async () => {
-    const provider = new ZaiChatModelProvider(
+    const provider = new OcGoChatModelProvider(
       secrets as unknown as vscode.SecretStorage,
       "jest-agent"
     );
@@ -129,12 +129,12 @@ describe("ZaiChatModelProvider", () => {
       { silent: true } as vscode.PrepareLanguageModelChatModelOptions,
       createToken()
     );
-    const glm5 = models.find((m) => m.id === "glm-5");
-    if (!glm5) {
-      throw new Error("glm-5 not found");
+    const kimiK25 = models.find((m) => m.id === "kimi-k2.5");
+    if (!kimiK25) {
+      throw new Error("kimi-k2.5 not found");
     }
 
-    const tooLargePrompt = "a".repeat(202753 * 4);
+    const tooLargePrompt = "a".repeat(131073 * 4);
     const messages = [vscode.LanguageModelChatMessage.User(tooLargePrompt)];
     const progress = {
       report: jest.fn(),
@@ -142,7 +142,7 @@ describe("ZaiChatModelProvider", () => {
 
     await expect(
       provider.provideLanguageModelChatResponse(
-        glm5,
+        kimiK25,
         messages,
         {},
         progress,
@@ -154,7 +154,7 @@ describe("ZaiChatModelProvider", () => {
   });
 
   it("should count tokens for text data parts in provideTokenCount", async () => {
-    const provider = new ZaiChatModelProvider(
+    const provider = new OcGoChatModelProvider(
       secrets as unknown as vscode.SecretStorage,
       "jest-agent"
     );

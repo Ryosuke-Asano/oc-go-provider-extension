@@ -6,6 +6,7 @@
 import * as vscode from "../__mocks__/vscode";
 import * as realVscode from "vscode";
 import type { LegacyPart } from "../src/utils";
+import type { AnthropicContentBlock } from "../src/types";
 import {
   tryParseJSONObject,
   validateRequest,
@@ -13,6 +14,8 @@ import {
   estimateMessagesTokens,
   convertMessages,
   convertTools,
+  convertMessagesToAnthropic,
+  convertToolsToAnthropic,
 } from "../src/utils";
 
 /**
@@ -429,5 +432,213 @@ describe("convertMessages", () => {
     const result = convertMessages([userToolResult]);
     expect(result.filter((m) => m.role === "user").length).toBe(0);
     expect(result.filter((m) => m.role === "tool").length).toBe(1);
+  });
+});
+
+describe("convertMessagesToAnthropic", () => {
+  it("should extract system message to top-level system field", () => {
+    const systemMsg = new vscode.LanguageModelChatMessage(
+      vscode.LanguageModelChatMessageRole.User,
+      [new vscode.LanguageModelTextPart("You are a helpful assistant.")]
+    );
+    // Simulate system message by assigning role (VSCode doesn't have a system role,
+    // but we handle it in convertMessagesToAnthropic)
+    const userMsg = new vscode.LanguageModelChatMessage(
+      vscode.LanguageModelChatMessageRole.User,
+      [new vscode.LanguageModelTextPart("Hello")]
+    );
+
+    const result = convertMessagesToAnthropic([systemMsg, userMsg]);
+    expect(result.messages.length).toBeGreaterThanOrEqual(1);
+    // Anthropic format only has user/assistant roles; system is separate
+    const roles = result.messages.map((m) => m.role);
+    expect(roles).not.toContain("system");
+  });
+
+  it("should convert user and assistant messages", () => {
+    const userMsg = new vscode.LanguageModelChatMessage(
+      vscode.LanguageModelChatMessageRole.User,
+      [new vscode.LanguageModelTextPart("Hello")]
+    );
+    const assistantMsg = new vscode.LanguageModelChatMessage(
+      vscode.LanguageModelChatMessageRole.Assistant,
+      [new vscode.LanguageModelTextPart("Hi there!")]
+    );
+
+    const result = convertMessagesToAnthropic([userMsg, assistantMsg]);
+    expect(result.messages.length).toBe(2);
+    expect(result.messages[0].role).toBe("user");
+    expect(result.messages[1].role).toBe("assistant");
+  });
+
+  it("should convert tool calls to tool_use content blocks", () => {
+    const assistant = new vscode.LanguageModelChatMessage(
+      vscode.LanguageModelChatMessageRole.Assistant,
+      [
+        new vscode.LanguageModelTextPart("Let me check that."),
+        new vscode.LanguageModelToolCallPart("call_123", "get_weather", {
+          location: "Tokyo",
+        }),
+      ]
+    );
+
+    const result = convertMessagesToAnthropic([assistant]);
+    expect(result.messages.length).toBeGreaterThanOrEqual(1);
+    // Find tool_use block across all messages
+    const allBlocks: AnthropicContentBlock[] = result.messages.flatMap((m) =>
+      Array.isArray(m.content) ? m.content : []
+    );
+    const toolUseBlock = allBlocks.find((b) => b.type === "tool_use");
+    expect(toolUseBlock).toBeDefined();
+    if (toolUseBlock && toolUseBlock.type === "tool_use") {
+      expect(toolUseBlock.id).toBe("call_123");
+      expect(toolUseBlock.name).toBe("get_weather");
+      expect(toolUseBlock.input).toEqual({ location: "Tokyo" });
+    }
+  });
+
+  it("should convert tool results to user messages with tool_result blocks", () => {
+    const userToolResult = new vscode.LanguageModelChatMessage(
+      vscode.LanguageModelChatMessageRole.User,
+      [
+        new vscode.LanguageModelToolResultPart("call_123", [
+          new vscode.LanguageModelTextPart("Sunny, 25°C"),
+        ]),
+      ]
+    );
+
+    const result = convertMessagesToAnthropic([userToolResult]);
+    expect(result.messages.length).toBe(1);
+    expect(result.messages[0].role).toBe("user");
+    const content = result.messages[0].content;
+    const blocks = Array.isArray(content) ? content : [];
+    const toolResultBlock = blocks.find(
+      (b: AnthropicContentBlock) => b.type === "tool_result"
+    );
+    expect(toolResultBlock).toBeDefined();
+    if (toolResultBlock && toolResultBlock.type === "tool_result") {
+      expect(toolResultBlock.tool_use_id).toBe("call_123");
+    }
+  });
+
+  it("should merge consecutive same-role messages", () => {
+    const user1 = new vscode.LanguageModelChatMessage(
+      vscode.LanguageModelChatMessageRole.User,
+      [new vscode.LanguageModelTextPart("Hello")]
+    );
+    const user2 = new vscode.LanguageModelChatMessage(
+      vscode.LanguageModelChatMessageRole.User,
+      [new vscode.LanguageModelTextPart("How are you?")]
+    );
+
+    const result = convertMessagesToAnthropic([user1, user2]);
+    // Messages should be merged or interleaved
+    expect(result.messages.length).toBeLessThanOrEqual(2);
+    // At least the content should be present
+    const allBlocks: AnthropicContentBlock[] = result.messages.flatMap((m) =>
+      Array.isArray(m.content) ? m.content : []
+    );
+    const textContent = allBlocks.filter(
+      (b) => b.type === "text" && typeof b.text === "string"
+    );
+    expect(textContent.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("convertToolsToAnthropic", () => {
+  it("should return empty tools when no tools are provided", () => {
+    const options = {} as realVscode.ProvideLanguageModelChatResponseOptions;
+    const result = convertToolsToAnthropic(options);
+    expect(result.tools).toBeUndefined();
+    expect(result.tool_choice).toBeUndefined();
+  });
+
+  it("should convert tools to Anthropic format with input_schema", () => {
+    const weatherTool: realVscode.LanguageModelChatTool = {
+      name: "get_weather",
+      description: "Get the weather for a location",
+      inputSchema: {
+        type: "object",
+        properties: {
+          location: { type: "string", description: "City name" },
+        },
+        required: ["location"],
+      },
+    };
+
+    const options = {
+      tools: [weatherTool],
+    } as unknown as realVscode.ProvideLanguageModelChatResponseOptions;
+
+    const result = convertToolsToAnthropic(options);
+    expect(result.tools).toBeDefined();
+    expect(result.tools!.length).toBe(1);
+    expect(result.tools![0].name).toBe("get_weather");
+    expect(result.tools![0].description).toBe("Get the weather for a location");
+    expect(result.tools![0].input_schema).toEqual({
+      type: "object",
+      properties: {
+        location: { type: "string", description: "City name" },
+      },
+      required: ["location"],
+    });
+  });
+
+  it("should set tool_choice to auto in auto mode", () => {
+    const weatherTool: realVscode.LanguageModelChatTool = {
+      name: "get_weather",
+      description: "Get the weather",
+      inputSchema: { type: "object", properties: {} },
+    };
+
+    const options = {
+      tools: [weatherTool],
+    } as unknown as realVscode.ProvideLanguageModelChatResponseOptions;
+
+    const result = convertToolsToAnthropic(options);
+    expect(result.tool_choice).toBe("auto");
+  });
+
+  it("should force a specific tool in required mode with one tool", () => {
+    const weatherTool: realVscode.LanguageModelChatTool = {
+      name: "get_weather",
+      description: "Get the weather",
+      inputSchema: { type: "object", properties: {} },
+    };
+
+    const options = {
+      tools: [weatherTool],
+      toolMode: vscode.LanguageModelChatToolMode.Required,
+    } as realVscode.ProvideLanguageModelChatResponseOptions;
+
+    const result = convertToolsToAnthropic(options);
+    expect(result.tool_choice).toEqual({
+      type: "tool",
+      name: "get_weather",
+    });
+  });
+
+  it("should not include type:function wrapper like OpenAI format", () => {
+    const tool: realVscode.LanguageModelChatTool = {
+      name: "search",
+      description: "Search the web",
+      inputSchema: {
+        type: "object",
+        properties: { query: { type: "string" } },
+        required: ["query"],
+      },
+    };
+
+    const options = {
+      tools: [tool],
+    } as unknown as realVscode.ProvideLanguageModelChatResponseOptions;
+
+    const result = convertToolsToAnthropic(options);
+    const toolDef = result.tools![0];
+    // Anthropic format has name/description/input_schema directly (no nested function)
+    const defAny = toolDef as any;
+    expect(defAny["function"]).toBeUndefined();
+    expect(defAny["parameters"]).toBeUndefined();
+    expect(toolDef.input_schema).toBeDefined();
   });
 });

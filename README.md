@@ -1,52 +1,39 @@
-# Z.ai Chat Provider for VS Code
+# OpenCode Go Chat Provider for VS Code
 
-[![CI](https://github.com/Ryosuke-Asano/zai-provider-extension/actions/workflows/ci.yml/badge.svg)](https://github.com/Ryosuke-Asano/zai-provider-extension/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.104.0%2B-blue)](https://code.visualstudio.com/)
 
-Integrates [Z.ai](https://z.ai) (智谱AI) models into VS Code Copilot Chat with advanced features including vision support, tool calling, and thinking process display.
+Integrates [OpenCode Go](https://opencode.ai/docs/ja/go) models into VS Code Copilot Chat with advanced features including vision support, tool calling, and thinking process display.
 
 ## Features
 
 - **Multiple Model Support**
-  - **GLM-4.5**: 131K context window, up to 96K output tokens
-  - **GLM-4.5 Air**: 131K context window, up to 96K output tokens
-  - **GLM-4.6**: 200K context window, up to 128K output tokens
-  - **GLM-4.7**: 200K context window, up to 128K output tokens
-  - **GLM-4.7 Flash**: Faster variant with 131K max output tokens
-  - **GLM-5**: 200K context window, up to 128K output tokens
-  - **GLM-5.1**: 200K context window, up to 128K output tokens
-  - **GLM-5-Turbo**: 200K context window, up to 128K output tokens
-  - **GLM-5V-Turbo**: Multimodal coding model with vision support
-  - **GLM-5-Code**: 200K context window, up to 131K output tokens, optimized for coding
-  - **GLM-4.6V**: Vision model (internal only, not exposed to users)
+  - **GLM-5**: 202K context window, up to 131K output tokens
+  - **GLM-5.1**: 202K context window, up to 131K output tokens
+  - **Kimi K2.5**: 131K context window, up to 8K output tokens
+  - **MiMo-V2-Pro**: 131K context window, up to 16K output tokens
+  - **MiMo-V2-Omni**: 131K context window, up to 16K output tokens, vision support
 
 - **Advanced Capabilities**
   - Tool calling support for VS Code chat participants
   - Streaming responses via Server-Sent Events (SSE)
-  - Vision support via GLM-OCR and GLM-4.6V fallback
+  - Vision support via MiMo-V2-Omni
   - Thinking/reasoning process display (configurable)
   - Automatic image-to-text conversion for non-vision models
 
 - **Secure API Key Management**
   - Stored securely in VS Code SecretStorage
-  - Managed via Command Palette (`Z.ai: Manage Z.ai Provider`)
+  - Managed via Command Palette (`OpenCode Go: Manage OpenCode Go Provider`)
 
 ## Installation
-
-### From Marketplace (Coming Soon)
-
-```bash
-code --install-extension Ryosuke-Asano.zai-vscode-chat
-```
 
 ### From Source
 
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/Ryosuke-Asano/zai-provider-extension.git
-cd zai-provider-extension
+git clone https://github.com/Ryosuke-Asano/oc-go-provider-extension.git
+cd oc-go-provider-extension
 ```
 
 2. Install dependencies:
@@ -70,64 +57,47 @@ npm run package
 5. Install the `.vsix` file:
 
 ```bash
-code --install-extension zai-vscode-chat-*.vsix
+code --install-extension opencode-go-vscode-chat-*.vsix
 ```
 
 ## Setup
 
 1. Open VS Code
 2. Open Command Palette (`Cmd/Ctrl + Shift + P`)
-3. Run `Z.ai: Manage Z.ai Provider`
-4. Enter your Z.ai API key
+3. Run `OpenCode Go: Manage OpenCode Go Provider`
+4. Enter your OpenCode Go API key
 
-Get your API key from [Z.ai Platform](https://open.bigmodel.cn/).
+Get your API key from [OpenCode](https://opencode.ai/).
 
 ## Usage
 
-Once configured, select Z.ai as your chat provider in VS Code Copilot Chat:
+Once configured, select OpenCode Go as your chat provider in VS Code Copilot Chat:
 
 - Open the Chat view (`Cmd/Ctrl + Alt + I`)
 - Click the provider selector
-- Choose a Z.ai model (GLM-4.5, GLM-4.6, GLM-4.7, GLM-4.7 Flash, GLM-5, GLM-5-Turbo, GLM-5.1, GLM-5V-Turbo, or GLM-5-Code)
-  - Note: GLM-4.6V is used internally for image processing and is not selectable
+- Choose an OpenCode Go model (GLM-5, GLM-5.1, Kimi K2.5, MiMo-V2-Pro, or MiMo-V2-Omni)
 
 ### Configuration
 
-| Setting              | Type    | Default | Description                                                 |
-| -------------------- | ------- | ------- | ----------------------------------------------------------- |
-| `zai.enableThinking` | boolean | `true`  | Enable thinking/reasoning process display in chat responses |
+| Setting                      | Type    | Default | Description                                                 |
+| ---------------------------- | ------- | ------- | ----------------------------------------------------------- |
+| `opencode-go.enableThinking` | boolean | `true`  | Enable thinking/reasoning process display in chat responses |
 
 ## Supported Models
 
-### User-Selectable Models
-
-| Model         | Context Window | Max Output | Vision | Tools |
-| ------------- | -------------- | ---------- | ------ | ----- |
-| GLM-4.5       | 131,072        | 98,304     | No     | Yes   |
-| GLM-4.5 Air   | 131,072        | 98,304     | No     | Yes   |
-| GLM-4.6       | 200,000        | 131,072    | No     | Yes   |
-| GLM-4.7       | 200,000        | 131,072    | No     | Yes   |
-| GLM-4.7 Flash | 200,000        | 131,072    | No     | Yes   |
-| GLM-5         | 200,000        | 131,072    | No     | Yes   |
-| GLM-5-Turbo   | 200,000        | 131,072    | No     | Yes   |
-| GLM-5.1       | 200,000        | 131,072    | No     | Yes   |
-| GLM-5V-Turbo  | 200,000        | 131,072    | Yes    | Yes   |
-| GLM-5-Code    | 200,000        | 131,000    | No     | Yes   |
-
-### Internal Models (Not Exposed)
-
-| Model    | Context Window | Max Output | Vision | Tools | Purpose                                       |
-| -------- | -------------- | ---------- | ------ | ----- | --------------------------------------------- |
-| GLM-4.6V | 128,000        | 16,000     | Yes    | Yes   | Image analysis fallback for non-vision models |
+| Model        | Context Window | Max Output | Vision | Tools |
+| ------------ | -------------- | ---------- | ------ | ----- |
+| GLM-5        | 202,752        | 131,072    | No     | Yes   |
+| GLM-5.1      | 202,752        | 131,072    | No     | Yes   |
+| Kimi K2.5    | 131,072        | 8,192      | No     | Yes   |
+| MiMo-V2-Pro  | 131,072        | 16,384     | No     | Yes   |
+| MiMo-V2-Omni | 131,072        | 16,384     | Yes    | Yes   |
 
 ## MCP Integration
 
-This extension integrates with Z.ai's MCP (Model Context Protocol) servers:
+This extension integrates with OpenCode Go's MCP (Model Context Protocol) server:
 
-- **web-search-prime**: Web search capabilities
-- **web-reader**: URL to text/markdown conversion
-- **zread**: GitHub repository file reading
-- **vision-mcp**: Image analysis
+- **Vision MCP**: Image analysis using MiMo-V2-Omni
 
 ## Development
 
@@ -159,6 +129,7 @@ src/
 ├── extension.ts    # Extension entry point, activation
 ├── provider.ts     # Main chat provider implementation
 ├── types.ts        # Type definitions and model configuration
+├── tools.ts        # Language model tool definitions
 ├── mcp.ts          # MCP client for tool integration
 └── utils.ts        # Utility functions for message/tool conversion
 ```
@@ -167,7 +138,7 @@ src/
 
 - VS Code 1.104.0 or later
 - Node.js 20 or later (for development)
-- Z.ai API key
+- OpenCode Go API key
 
 ## Troubleshooting
 
@@ -175,17 +146,17 @@ src/
 
 If you see authentication errors:
 
-1. Run `Z.ai: Manage Z.ai Provider`
+1. Run `OpenCode Go: Manage OpenCode Go Provider`
 2. Verify your API key is correct
-3. Ensure your API key has active credits
+3. Ensure your OpenCode Go subscription is active
 
 ### Vision Not Working
 
-For non-vision models (GLM-4.5, GLM-4.6, GLM-4.7, GLM-5, GLM-5.1, GLM-5-Code):
+For non-vision models (GLM-5, GLM-5.1, Kimi K2.5, MiMo-V2-Pro):
 
-- Images are automatically converted to text descriptions using GLM-OCR MCP
-- If GLM-OCR fails, the extension internally uses GLM-4.6V for image analysis
-- GLM-4.6V is **not selectable** by users—it is only used as an internal fallback
+- Images are automatically converted to text descriptions using Vision MCP
+- If the MCP tool fails, the extension internally uses MiMo-V2-Omni for image analysis
+- MiMo-V2-Omni is also available as a selectable model with direct vision support
 
 ### Large Context Errors
 
@@ -206,6 +177,6 @@ MIT © 2025 Ryosuke Asano
 
 ## Links
 
-- [Repository](https://github.com/Ryosuke-Asano/zai-provider-extension)
-- [Issue Tracker](https://github.com/Ryosuke-Asano/zai-provider-extension/issues)
-- [Z.ai Platform](https://open.bigmodel.cn/)
+- [Repository](https://github.com/Ryosuke-Asano/oc-go-provider-extension)
+- [Issue Tracker](https://github.com/Ryosuke-Asano/oc-go-provider-extension/issues)
+- [OpenCode](https://opencode.ai/)

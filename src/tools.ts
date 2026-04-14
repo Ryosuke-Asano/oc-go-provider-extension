@@ -1,19 +1,19 @@
 import * as vscode from "vscode";
-import { ZaiMcpClient } from "./mcp";
+import { OcGoMcpClient } from "./mcp";
 
 /**
- * Tool for analyzing images using Z.ai Vision model.
+ * Tool for analyzing images using OpenCode Go Vision model.
  * Useful for non-vision models to process image content.
  */
-export class ZaiAnalyzeImageTool implements vscode.LanguageModelTool<{
+export class OcGoAnalyzeImageTool implements vscode.LanguageModelTool<{
   image_data: string;
   prompt: string;
 }> {
-  static readonly id = "zai_analyze_image";
+  static readonly id = "opencode_go_analyze_image";
 
-  readonly name = ZaiAnalyzeImageTool.id;
+  readonly name = OcGoAnalyzeImageTool.id;
   readonly description =
-    "Analyze an image using Z.ai Vision model. Use this tool when you need to understand or describe the content of an image, extract text from images (OCR), or answer questions about visual content. Returns a detailed analysis of the image.";
+    "Analyze an image using OpenCode Go Vision model. Use this tool when you need to understand or describe the content of an image, extract text from images (OCR), or answer questions about visual content. Returns a detailed analysis of the image.";
   readonly tags = ["vision", "image", "ocr", "analysis"];
 
   readonly inputSchema = {
@@ -33,10 +33,10 @@ export class ZaiAnalyzeImageTool implements vscode.LanguageModelTool<{
     required: ["image_data", "prompt"],
   };
 
-  private readonly _mcpClient: ZaiMcpClient;
+  private readonly _mcpClient: OcGoMcpClient;
 
   constructor(secrets: vscode.SecretStorage) {
-    this._mcpClient = new ZaiMcpClient(secrets);
+    this._mcpClient = new OcGoMcpClient(secrets);
   }
 
   async invoke(
@@ -72,22 +72,22 @@ export class ZaiAnalyzeImageTool implements vscode.LanguageModelTool<{
     _token: vscode.CancellationToken
   ): vscode.ProviderResult<vscode.PreparedToolInvocation> {
     return {
-      invocationMessage: "Analyzing image with Z.ai Vision...",
+      invocationMessage: "Analyzing image with OpenCode Go Vision...",
     };
   }
 }
 
 /**
- * Register all Z.ai tools with the Language Model API.
+ * Register all OpenCode Go tools with the Language Model API.
  * @param secrets VS Code secret storage for API key access
  * @returns Disposable for the tool registrations
  */
-export function registerZaiTools(
+export function registerOcGoTools(
   secrets: vscode.SecretStorage
 ): vscode.Disposable {
-  const analyzeImageTool = new ZaiAnalyzeImageTool(secrets);
+  const analyzeImageTool = new OcGoAnalyzeImageTool(secrets);
 
   return vscode.Disposable.from(
-    vscode.lm.registerTool(ZaiAnalyzeImageTool.id, analyzeImageTool)
+    vscode.lm.registerTool(OcGoAnalyzeImageTool.id, analyzeImageTool)
   );
 }

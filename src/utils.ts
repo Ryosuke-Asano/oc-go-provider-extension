@@ -1,10 +1,13 @@
 import * as vscode from "vscode";
 import type {
-  ZaiChatMessage,
-  ZaiTool,
-  ZaiContentPart,
+  OcGoChatMessage,
+  OcGoTool,
+  OcGoContentPart,
   Json,
   JsonObject,
+  AnthropicMessage,
+  AnthropicContentBlock,
+  AnthropicTool,
 } from "./types";
 
 /**
@@ -296,13 +299,13 @@ export function getToolResultTexts(
 }
 
 /**
- * Convert VSCode LanguageModelChatMessage to Z.ai/OpenAI format
+ * Convert VSCode LanguageModelChatMessage to OpenCode Go/OpenAI format
  */
 export function convertMessages(
   messages: readonly vscode.LanguageModelChatMessage[],
   options?: { maxToolResultChars?: number }
-): ZaiChatMessage[] {
-  const result: ZaiChatMessage[] = [];
+): OcGoChatMessage[] {
+  const result: OcGoChatMessage[] = [];
 
   for (const msg of messages) {
     const role =
@@ -322,7 +325,7 @@ export function convertMessages(
     }
 
     // Collect images
-    const imageParts: ZaiContentPart[] = [];
+    const imageParts: OcGoContentPart[] = [];
     for (const part of msg.content) {
       const img = extractImageData(part);
       if (!img) continue;
@@ -333,7 +336,10 @@ export function convertMessages(
           image_url: { url: `data:${img.mimeType};base64,${base64Data}` },
         });
       } else {
-        console.warn("[Z.ai] Image part has no accessible byte data:", part);
+        console.warn(
+          "[OpenCode Go] Image part has no accessible byte data:",
+          part
+        );
       }
     }
 
@@ -381,7 +387,7 @@ export function convertMessages(
       !(role === "assistant" && toolCalls.length > 0)
     ) {
       if (imageParts.length > 0) {
-        const contentParts: ZaiContentPart[] = [];
+        const contentParts: OcGoContentPart[] = [];
         const textContent = textParts.join("");
         if (textContent) {
           contentParts.push({ type: "text", text: textContent });
@@ -450,12 +456,12 @@ export function getFirstToolResultCallId(
 }
 
 /**
- * Convert VSCode tools to Z.ai/OpenAI format
+ * Convert VSCode tools to OpenCode Go/OpenAI format
  */
 export function convertTools(
   options: vscode.ProvideLanguageModelChatResponseOptions
 ): {
-  tools?: ZaiTool[];
+  tools?: OcGoTool[];
   tool_choice?: "auto" | { type: "function"; function: { name: string } };
 } {
   const toolsInput = options.tools ?? [];
@@ -468,7 +474,7 @@ export function convertTools(
     return {};
   }
 
-  const tools: ZaiTool[] = toolsInput.map((tool) => ({
+  const tools: OcGoTool[] = toolsInput.map((tool) => ({
     type: "function",
     function: {
       name: tool.name,
@@ -490,6 +496,241 @@ export function convertTools(
       type: "function",
       function: { name: tools[0].function.name },
     };
+  }
+
+  return { tools, tool_choice };
+}
+
+/**
+ * Convert VSCode LanguageModelChatMessage to Anthropic Messages API format
+ *
+ * Anthropic format differences from OpenAI:
+ * - System messages are extracted as a top-level `system` parameter
+ * - Only `user` and `assistant` roles are allowed in messages
+ * - Tool results use `role: "user"` with `content: [{type: "tool_result", ...}]`
+ * - Images use `{type: "image", source: {type: "base64", ...}}` format
+ */
+export function convertMessagesToAnthropic(
+  messages: readonly vscode.LanguageModelChatMessage[],
+  options?: { maxToolResultChars?: number }
+): { system?: string; messages: AnthropicMessage[] } {
+  const systemParts: string[] = [];
+  const result: AnthropicMessage[] = [];
+
+  for (const msg of messages) {
+    const isUser = msg.role === vscode.LanguageModelChatMessageRole.User;
+    const isAssistant =
+      msg.role === vscode.LanguageModelChatMessageRole.Assistant;
+
+    // Collect text parts
+    const textParts: string[] = [];
+    for (const part of msg.content) {
+      const tv = getTextPartValue(part);
+      if (tv !== undefined) {
+        textParts.push(tv);
+      }
+    }
+
+    // Collect images in Anthropic format
+    const imageBlocks: AnthropicContentBlock[] = [];
+    for (const part of msg.content) {
+      const img = extractImageData(part);
+      if (img && img.data && img.data.length > 0) {
+        const base64Data = Buffer.from(img.data).toString("base64");
+        imageBlocks.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: img.mimeType,
+            data: base64Data,
+          },
+        });
+      }
+    }
+
+    // Handle tool calls (assistant messages)
+    const toolCalls = msg.content
+      .map((p) => getToolCallInfo(p))
+      .filter(
+        (t): t is { id?: string; name?: string; args?: Json | string } => !!t
+      );
+
+    // Handle tool results
+    const toolResults = getToolResultEntries(
+      msg.content as Array<vscode.LanguageModelInputPart | LegacyPart>,
+      options?.maxToolResultChars
+    );
+
+    // System messages → top-level system parameter
+    if (!isUser && !isAssistant) {
+      const text = textParts.join("");
+      if (text) {
+        systemParts.push(text);
+      }
+      continue;
+    }
+
+    const role: "user" | "assistant" = isUser ? "user" : "assistant";
+
+    // Build content blocks for this message
+    const contentBlocks: AnthropicContentBlock[] = [];
+
+    // Text content
+    const textContent = textParts.join("");
+    if (textContent) {
+      contentBlocks.push({ type: "text", text: textContent });
+    }
+
+    // Images
+    contentBlocks.push(...imageBlocks);
+
+    // Tool calls (assistant messages)
+    if (isAssistant && toolCalls.length > 0) {
+      for (const tc of toolCalls) {
+        const inputObj =
+          typeof tc.args === "string"
+            ? (() => {
+                try {
+                  return JSON.parse(tc.args) as JsonObject;
+                } catch {
+                  return {} as JsonObject;
+                }
+              })()
+            : ((tc.args as JsonObject) ?? ({} as JsonObject));
+        contentBlocks.push({
+          type: "tool_use",
+          id: tc.id ?? `toolu_${Math.random().toString(36).slice(2, 14)}`,
+          name: tc.name ?? "unknown",
+          input: inputObj,
+        });
+      }
+    }
+
+    // Tool results (mapped to user messages with tool_result blocks)
+    if (isUser && toolResults.length > 0) {
+      for (const tr of toolResults) {
+        result.push({
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: tr.callId,
+              content: tr.content || "",
+            },
+          ],
+        });
+      }
+      // If there's also text/image content, add as separate user message
+      if (contentBlocks.length > 0) {
+        result.push({ role: "user", content: contentBlocks });
+      }
+      continue;
+    }
+
+    // Regular user/assistant message
+    if (contentBlocks.length > 0) {
+      // If single text block, simplify to string
+      if (
+        contentBlocks.length === 1 &&
+        contentBlocks[0].type === "text" &&
+        imageBlocks.length === 0
+      ) {
+        result.push({ role, content: textContent });
+      } else {
+        result.push({ role, content: contentBlocks });
+      }
+    } else {
+      result.push({ role, content: "(empty message)" });
+    }
+  }
+
+  // Ensure alternating user/assistant pattern (Anthropic requirement)
+  // Merge consecutive same-role messages
+  const mergedMessages = mergeConsecutiveMessages(result);
+
+  return {
+    system: systemParts.length > 0 ? systemParts.join("\n\n") : undefined,
+    messages: mergedMessages,
+  };
+}
+
+/**
+ * Merge consecutive messages with the same role (Anthropic requires alternating roles)
+ */
+function mergeConsecutiveMessages(
+  messages: AnthropicMessage[]
+): AnthropicMessage[] {
+  if (messages.length === 0) return messages;
+
+  const result: AnthropicMessage[] = [messages[0]];
+
+  for (let i = 1; i < messages.length; i++) {
+    const prev = result[result.length - 1];
+    const curr = messages[i];
+
+    if (prev.role === curr.role) {
+      // Merge content
+      const prevContent =
+        typeof prev.content === "string"
+          ? [{ type: "text" as const, text: prev.content }]
+          : prev.content;
+      const currContent =
+        typeof curr.content === "string"
+          ? [{ type: "text" as const, text: curr.content }]
+          : curr.content;
+      prev.content = [...prevContent, ...currContent];
+    } else {
+      result.push(curr);
+    }
+  }
+
+  // Ensure first message is from user (Anthropic requirement)
+  if (result.length > 0 && result[0].role !== "user") {
+    result.unshift({ role: "user", content: "(start of conversation)" });
+  }
+
+  return result;
+}
+
+/**
+ * Convert VSCode tools to Anthropic Messages API format
+ *
+ * Anthropic tool format:
+ * { name, description, input_schema } instead of { type: "function", function: { name, description, parameters } }
+ */
+export function convertToolsToAnthropic(
+  options: vscode.ProvideLanguageModelChatResponseOptions
+): {
+  tools?: AnthropicTool[];
+  tool_choice?: "auto" | "any" | { type: "tool"; name: string };
+} {
+  const toolsInput = options.tools ?? [];
+  if (toolsInput.length === 0) {
+    if (options.toolMode === vscode.LanguageModelChatToolMode.Required) {
+      throw new Error(
+        "LanguageModelChatToolMode.Required requires at least one tool."
+      );
+    }
+    return {};
+  }
+
+  const tools: AnthropicTool[] = toolsInput.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    input_schema:
+      (tool.inputSchema as JsonObject) ??
+      ({ type: "object", properties: {} } as JsonObject),
+  }));
+
+  let tool_choice: "auto" | "any" | { type: "tool"; name: string } = "auto";
+
+  if (options.toolMode === vscode.LanguageModelChatToolMode.Required) {
+    if (tools.length !== 1) {
+      throw new Error(
+        "LanguageModelChatToolMode.Required is not supported with more than one tool."
+      );
+    }
+    tool_choice = { type: "tool", name: tools[0].name };
   }
 
   return { tools, tool_choice };
@@ -540,7 +781,7 @@ export function validateRequest(
 /**
  * Estimate token count.
  *
- * GLM tokenizer averages ~2 chars/token for mixed CJK/Latin text.
+ * Tokenizer averages ~2 chars/token for mixed CJK/Latin text.
  * Using a conservative divisor of 2 avoids undercounting which causes
  * context-window-exceeded errors at the API level.
  */
