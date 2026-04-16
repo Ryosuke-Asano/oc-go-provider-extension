@@ -1,7 +1,7 @@
 {
   "name": "opencode-go-vscode-chat",
   "displayName": "OpenCode Go Chat Provider for VS Code",
-  "description": "Integrates OpenCode Go models (GLM-5/5.1, Kimi K2.5, MiMo-V2, MiniMax M2.5/M2.7) into VS Code Copilot Chat with tool calling and vision",
+  "description": "Integrates OpenCode Go models (GLM-5/5.1, Kimi K2.5, MiMo-V2, MiniMax M2.5/M2.7, Qwen3.5/3.6 Plus) into VS Code Copilot Chat with tool calling and vision",
   "version": "0.2.1",
   "publisher": "Ryosuke-Asano",
   "license": "MIT",
@@ -26,6 +26,8 @@
     "glm",
     "kimi",
     "mimo",
+    "minimax",
+    "qwen",
     "llm"
   ],
   "activationEvents": [

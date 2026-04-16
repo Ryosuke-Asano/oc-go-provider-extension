@@ -407,6 +407,26 @@ describe("OC_GO_MODELS", () => {
     expect(model?.maxOutput).toBe(131072);
   });
 
+  it("should have Qwen3.5 Plus model with OpenAI API format", () => {
+    const model = OC_GO_MODELS.find((m) => m.id === "qwen3.5-plus");
+    expect(model).toBeDefined();
+    expect(model?.name).toBe("Qwen3.5 Plus");
+    expect(model?.supportsVision).toBe(true);
+    expect(model?.apiFormat).toBe("openai");
+    expect(model?.contextWindow).toBe(1000000);
+    expect(model?.maxOutput).toBe(65536);
+  });
+
+  it("should have Qwen3.6 Plus model with OpenAI API format", () => {
+    const model = OC_GO_MODELS.find((m) => m.id === "qwen3.6-plus");
+    expect(model).toBeDefined();
+    expect(model?.name).toBe("Qwen3.6 Plus");
+    expect(model?.supportsVision).toBe(true);
+    expect(model?.apiFormat).toBe("openai");
+    expect(model?.contextWindow).toBe(1000000);
+    expect(model?.maxOutput).toBe(65536);
+  });
+
   it("should have OpenAI format for non-MiniMax models", () => {
     const openaiModels = OC_GO_MODELS.filter(
       (m) => m.id !== "minimax-m2.5" && m.id !== "minimax-m2.7"
