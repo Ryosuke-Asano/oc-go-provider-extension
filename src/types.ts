@@ -269,7 +269,7 @@ export type AnthropicSSEEvent =
  * Available OpenCode Go models configuration
  *
  * Models using the OpenAI-compatible endpoint (chat/completions):
- *   GLM-5, GLM-5.1, Kimi K2.5, MiMo-V2-Pro, MiMo-V2-Omni
+ *   GLM-5, GLM-5.1, Kimi K2.5, Kimi K2.6, MiMo-V2-Pro, MiMo-V2-Omni
  *
  * Models using the Anthropic-compatible endpoint (messages):
  *   MiniMax M2.5, MiniMax M2.7
@@ -301,6 +301,17 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     displayName: "Kimi K2.5",
     contextWindow: 262144,
     maxOutput: 65536,
+    supportsTools: true,
+    supportsVision: true,
+    apiFormat: "openai",
+    fixedTemperature: 1,
+  },
+  {
+    id: "kimi-k2.6",
+    name: "Kimi K2.6",
+    displayName: "Kimi K2.6",
+    contextWindow: 262144,
+    maxOutput: 262144,
     supportsTools: true,
     supportsVision: true,
     apiFormat: "openai",

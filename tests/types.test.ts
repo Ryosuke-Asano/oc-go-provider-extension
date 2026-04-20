@@ -378,6 +378,16 @@ describe("OC_GO_MODELS", () => {
     expect(model?.maxOutput).toBe(65536);
   });
 
+  it("should have Kimi K2.6 model", () => {
+    const model = OC_GO_MODELS.find((m) => m.id === "kimi-k2.6");
+    expect(model).toBeDefined();
+    expect(model?.name).toBe("Kimi K2.6");
+    expect(model?.contextWindow).toBe(262144);
+    expect(model?.maxOutput).toBe(262144);
+    expect(model?.supportsVision).toBe(true);
+    expect(model?.fixedTemperature).toBe(1);
+  });
+
   it("should have MiMo-V2-Omni vision model", () => {
     const model = OC_GO_MODELS.find((m) => m.id === "mimo-v2-omni");
     expect(model).toBeDefined();
