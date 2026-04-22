@@ -29,6 +29,8 @@ export interface OcGoChatMessage {
   name?: string;
   tool_calls?: OcGoToolCall[];
   tool_call_id?: string;
+  /** Kimi (Moonshot AI) requires this field in assistant messages when thinking mode is enabled */
+  reasoning_content?: string | null;
 }
 
 export interface OcGoToolCall {

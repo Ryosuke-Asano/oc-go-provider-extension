@@ -364,6 +364,9 @@ export function convertMessages(
             arguments: JSON.stringify(tc.args ?? {}),
           },
         })),
+        // Kimi (Moonshot AI) requires reasoning_content in assistant messages with tool_calls
+        // when thinking mode is enabled; harmless for other providers
+        reasoning_content: "",
       });
       emittedAnyMessage = true;
     }
@@ -393,9 +396,17 @@ export function convertMessages(
           contentParts.push({ type: "text", text: textContent });
         }
         contentParts.push(...imageParts);
-        result.push({ role, content: contentParts });
+        const msg: OcGoChatMessage = { role, content: contentParts };
+        if (role === "assistant") {
+          msg.reasoning_content = "";
+        }
+        result.push(msg);
       } else {
-        result.push({ role, content: textParts.join("") });
+        const msg: OcGoChatMessage = { role, content: textParts.join("") };
+        if (role === "assistant") {
+          msg.reasoning_content = "";
+        }
+        result.push(msg);
       }
       emittedAnyMessage = true;
     }
