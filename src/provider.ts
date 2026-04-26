@@ -80,6 +80,9 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
   /** Buffer for text-embedded tool call token parsing */
   private _textToolParserBuffer = "";
 
+  /** Buffer for accumulating reasoning content from the stream */
+  private _reasoningContentBuffer = "";
+
   /** Active text-embedded tool call being assembled */
   private _textToolActive:
     | {
@@ -381,6 +384,7 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
     this._emittedBeginToolCallsHint = false;
     this._textToolParserBuffer = "";
     this._textToolActive = undefined;
+    this._reasoningContentBuffer = "";
     this._emittedTextToolCallKeys.clear();
     this._emittedTextToolCallIds.clear();
     this._usageMetrics = { prompt_tokens: 0, completion_tokens: 0 };
@@ -1090,6 +1094,7 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
                 alreadyReported: this._usageReported,
               }
             );
+            this.reportReasoningContent(progress);
             this.reportUsageMetrics(progress);
             continue;
           }
@@ -1141,6 +1146,7 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
       this._emittedBeginToolCallsHint = false;
       this._textToolParserBuffer = "";
       this._textToolActive = undefined;
+      this._reasoningContentBuffer = "";
       this._emittedTextToolCallKeys.clear();
       this._emittedTextToolCallIds.clear();
       this._usageMetrics = { prompt_tokens: 0, completion_tokens: 0 };
@@ -1191,6 +1197,35 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
   }
 
   /**
+   * Report accumulated reasoning content to VS Code Chat UI via LanguageModelDataPart.
+   * This preserves reasoning content in the conversation history so it can be
+   * included in subsequent requests (required by Moonshot AI/Kimi when thinking is enabled).
+   */
+  private reportReasoningContent(
+    progress: vscode.Progress<vscode.LanguageModelResponsePart>
+  ): void {
+    if (!this._reasoningContentBuffer) {
+      return;
+    }
+    try {
+      progress.report(
+        vscode.LanguageModelDataPart.json(
+          {
+            type: "reasoning",
+            content: this._reasoningContentBuffer,
+          },
+          "application/vnd.opencode-go.reasoning+json"
+        )
+      );
+    } catch (e) {
+      console.warn(
+        "[OpenCode Go Model Provider] Failed to report reasoning content via progress",
+        e
+      );
+    }
+  }
+
+  /**
    * Handle a single streamed delta chunk, emitting text and tool call parts.
    * @param delta Parsed SSE chunk from OpenCode Go.
    * @param progress Progress reporter for parts.
@@ -1206,6 +1241,13 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
     }
 
     const deltaObj = choice.delta;
+
+    // Handle reasoning content
+    // Moonshot AI/Kimi streams reasoning in the `reasoning` field (not `reasoning_content`);
+    // we accumulate it here and later emit it as a data part so it is preserved in history.
+    if (deltaObj?.reasoning) {
+      this._reasoningContentBuffer += String(deltaObj.reasoning);
+    }
 
     // Handle text content
     if (deltaObj?.content) {

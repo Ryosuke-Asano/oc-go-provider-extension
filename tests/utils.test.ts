@@ -433,6 +433,51 @@ describe("convertMessages", () => {
     expect(result.filter((m) => m.role === "user").length).toBe(0);
     expect(result.filter((m) => m.role === "tool").length).toBe(1);
   });
+
+  it("should use non-empty placeholder reasoning_content when no reasoning data part exists", () => {
+    const assistant = new vscode.LanguageModelChatMessage(
+      vscode.LanguageModelChatMessageRole.Assistant,
+      [new vscode.LanguageModelTextPart("Hello")]
+    );
+
+    const result = convertMessages([assistant]);
+    expect(result[0].role).toBe("assistant");
+    expect(result[0].reasoning_content).toBe(" ");
+  });
+
+  it("should extract reasoning_content from custom data part", () => {
+    const reasoningData = vscode.LanguageModelDataPart.json(
+      { type: "reasoning", content: "Let me think..." },
+      "application/vnd.opencode-go.reasoning+json"
+    );
+    const assistant = new vscode.LanguageModelChatMessage(
+      vscode.LanguageModelChatMessageRole.Assistant,
+      [
+        new vscode.LanguageModelTextPart("Hello"),
+        reasoningData,
+        new vscode.LanguageModelToolCallPart("call_1", "get_weather", {
+          location: "Tokyo",
+        }),
+      ]
+    );
+
+    const result = convertMessages([assistant]);
+    expect(result[0].role).toBe("assistant");
+    expect(result[0].reasoning_content).toBe("Let me think...");
+    expect(result[0].tool_calls?.length).toBe(1);
+  });
+
+  it("should include reasoning_content in fallback empty assistant messages", () => {
+    const assistant = new vscode.LanguageModelChatMessage(
+      vscode.LanguageModelChatMessageRole.Assistant,
+      []
+    );
+
+    const result = convertMessages([assistant]);
+    expect(result[0].role).toBe("assistant");
+    expect(result[0].content).toBe("(empty message)");
+    expect(result[0].reasoning_content).toBe(" ");
+  });
 });
 
 describe("convertMessagesToAnthropic", () => {

@@ -94,6 +94,8 @@ export interface OcGoStreamChoice {
     role?: string;
     content?: string;
     reasoning_content?: string;
+    /** Moonshot AI/Kimi sends reasoning text in this field during streaming */
+    reasoning?: string;
     tool_calls?: OcGoToolCall[];
   };
   finish_reason: string | null;
