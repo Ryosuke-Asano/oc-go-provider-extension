@@ -343,6 +343,27 @@ export function convertMessages(
       }
     }
 
+    // Extract reasoning content from custom data parts (preserved from previous turns)
+    let reasoningContent = "";
+    for (const part of msg.content) {
+      if (typeof part === "object" && part !== null) {
+        const p = part as { mimeType?: string; data?: Uint8Array };
+        if (
+          p.mimeType === "application/vnd.opencode-go.reasoning+json" &&
+          p.data instanceof Uint8Array
+        ) {
+          try {
+            const json = JSON.parse(new TextDecoder().decode(p.data));
+            if (typeof json.content === "string") {
+              reasoningContent = json.content;
+            }
+          } catch {
+            // Ignore malformed reasoning data parts
+          }
+        }
+      }
+    }
+
     // Handle tool calls
     const toolCalls = msg.content
       .map((p) => getToolCallInfo(p))
@@ -365,8 +386,9 @@ export function convertMessages(
           },
         })),
         // Kimi (Moonshot AI) requires reasoning_content in assistant messages with tool_calls
-        // when thinking mode is enabled; harmless for other providers
-        reasoning_content: "",
+        // when thinking mode is enabled. Use preserved reasoning or a non-empty placeholder
+        // to avoid proxy stripping of empty strings.
+        reasoning_content: reasoningContent || " ",
       });
       emittedAnyMessage = true;
     }
@@ -398,13 +420,13 @@ export function convertMessages(
         contentParts.push(...imageParts);
         const msg: OcGoChatMessage = { role, content: contentParts };
         if (role === "assistant") {
-          msg.reasoning_content = "";
+          msg.reasoning_content = reasoningContent || " ";
         }
         result.push(msg);
       } else {
         const msg: OcGoChatMessage = { role, content: textParts.join("") };
         if (role === "assistant") {
-          msg.reasoning_content = "";
+          msg.reasoning_content = reasoningContent || " ";
         }
         result.push(msg);
       }
@@ -412,7 +434,11 @@ export function convertMessages(
     }
 
     if (!emittedAnyMessage) {
-      result.push({ role, content: "(empty message)" });
+      const msg: OcGoChatMessage = { role, content: "(empty message)" };
+      if (role === "assistant") {
+        msg.reasoning_content = reasoningContent || " ";
+      }
+      result.push(msg);
     }
   }
 
