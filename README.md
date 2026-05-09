@@ -19,8 +19,10 @@ Integrates [OpenCode Go](https://opencode.ai/docs/ja/go) models into VS Code Cop
 - **Advanced Capabilities**
   - Tool calling support for VS Code chat participants
   - Streaming responses via Server-Sent Events (SSE)
-  - Vision support via Kimi K2.5 and MiMo-V2-Omni
-  - Automatic image-to-text conversion for non-vision models
+  - Vision support via Kimi K2.5/K2.6, MiMo-V2-Omni, MiMo-V2.5, Qwen3.5/3.6 Plus
+  - Automatic image-to-text proxy for non-vision models (configurable proxy model)
+  - Reasoning Effort picker in the model selector for models that support thinking modes (DeepSeek V4, Qwen3.5/3.6 Plus, Kimi K2.5/K2.6)
+  - Status bar showing prompt size, cumulative input/output tokens, and cache hit rate (when the model surfaces cache stats, e.g. DeepSeek)
 
 - **Secure API Key Management**
   - Stored securely in VS Code SecretStorage
@@ -151,11 +153,40 @@ If you see authentication errors:
 
 ### Vision Not Working
 
-For non-vision models (GLM-5, GLM-5.1, MiMo-V2-Pro, MiniMax M2.5, MiniMax M2.7):
+For non-vision models (GLM-5, GLM-5.1, MiMo-V2-Pro, MiniMax M2.5, MiniMax M2.7, DeepSeek V4 Flash/Pro):
 
-- Images are automatically converted to text descriptions using Vision MCP
-- If the MCP tool fails, the extension internally uses MiMo-V2-Omni for image analysis
-- MiMo-V2-Omni is also available as a selectable model with direct vision support
+- Attached images are sent to a configurable **vision proxy model** which returns a textual description; that description is then included as context in the request to the active (non-vision) model.
+- Vision-capable models receive the image directly without proxying.
+
+To pick the proxy model, use whichever is easiest:
+
+1. **Command Palette** (`Ctrl/Cmd + Shift + P`) → `OpenCode Go: Select Vision Proxy Model`. A QuickPick lists every vision-capable model with the current selection marked.
+2. **Settings UI** (`Ctrl/Cmd + ,`) → search "OpenCode Go" → dropdown for `OpenCode Go: Vision Proxy Model`.
+3. **settings.json**: `"opencodego.visionProxyModel": "mimo-v2-omni"`.
+
+Default: `kimi-k2.6`. Available: `kimi-k2.5`, `kimi-k2.6`, `mimo-v2-omni`, `mimo-v2.5`, `qwen3.5-plus`, `qwen3.6-plus`.
+
+> **Latency tip:** the proxy call is a synchronous round-trip that completes before the target model is invoked, so total latency is `T_proxy_full + T_target`. If the default `kimi-k2.6` feels slow on image prompts (Kimi always reasons), switch to `mimo-v2-omni` — it has no thinking phase and returns descriptions much faster.
+
+## Reasoning Effort
+
+Models that support a reasoning / thinking mode expose a **Reasoning Effort** picker directly in the VS Code model selector:
+
+| Model              | Picker options                          | Default |
+| ------------------ | --------------------------------------- | ------- |
+| DeepSeek V4 Flash  | Disabled, High, Maximum                 | Maximum |
+| DeepSeek V4 Pro    | Disabled, High, Maximum                 | Maximum |
+| Qwen3.5 Plus       | Disabled, Thinking                      | Thinking |
+| Qwen3.6 Plus       | Disabled, Thinking                      | Thinking |
+| Kimi K2.5 / K2.6   | Thinking (always on)                    | Thinking |
+
+The selected effort is sent as `reasoning_effort` and `thinking: { type: "enabled" | "disabled" }` in the OpenCode Go request.
+
+## Settings
+
+| Setting                          | Default       | Description                                                                                |
+| -------------------------------- | ------------- | ------------------------------------------------------------------------------------------ |
+| `opencodego.visionProxyModel`    | `kimi-k2.6`   | Vision-capable model used to transcribe images for non-vision chat models.                 |
 
 ### Large Context Errors
 

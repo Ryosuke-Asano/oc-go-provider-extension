@@ -2,7 +2,7 @@
   "name": "opencode-go-vscode-chat",
   "displayName": "OpenCode Go Chat Provider for VS Code",
   "description": "Integrates OpenCode Go models (GLM-5/5.1, Kimi K2.5/K2.6, MiMo-V2/V2.5, MiniMax M2.5/M2.7, Qwen3.5/3.6 Plus, DeepSeek V4 Flash/Pro) into VS Code Copilot Chat with tool calling and vision",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "publisher": "Ryosuke-Asano",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -35,6 +35,9 @@
     "onStartupFinished"
   ],
   "main": "./out/extension.js",
+  "enabledApiProposals": [
+    "chatProvider"
+  ],
   "contributes": {
     "languageModelChatProviders": [
       {
@@ -56,11 +59,38 @@
         "command": "opencode-go.manage",
         "title": "Manage OpenCode Go Provider",
         "category": "OpenCode Go"
+      },
+      {
+        "command": "opencode-go.selectVisionProxyModel",
+        "title": "Select Vision Proxy Model",
+        "category": "OpenCode Go"
       }
     ],
     "configuration": {
       "title": "OpenCode Go",
-      "properties": {}
+      "properties": {
+        "opencodego.visionProxyModel": {
+          "type": "string",
+          "default": "kimi-k2.6",
+          "enum": [
+            "mimo-v2-omni",
+            "mimo-v2.5",
+            "qwen3.5-plus",
+            "qwen3.6-plus",
+            "kimi-k2.5",
+            "kimi-k2.6"
+          ],
+          "enumDescriptions": [
+            "MiMo-V2-Omni — fastest. No reasoning phase. Good for quick OCR / general descriptions. Lower detail.",
+            "MiMo-V2.5 — fast. No reasoning phase. Slightly better quality than V2-Omni.",
+            "Qwen3.5 Plus — balanced. Reasoning is optional. 1M context. Good detail / speed tradeoff.",
+            "Qwen3.6 Plus — balanced (newer). Reasoning is optional. 1M context. Good detail / speed tradeoff.",
+            "Kimi K2.5 — high detail. Always reasons before responding (slower). Best for nuanced visual analysis.",
+            "Kimi K2.6 — highest detail (default). Always reasons before responding (slowest). Best for nuanced visual analysis."
+          ],
+          "description": "Vision-capable OpenCode Go model used to transcribe attached images to text when the active chat model does not support vision. The image is sent to this proxy model and its description is included in the request to the active model. Pick a faster model (MiMo) for low-latency or a richer model (Kimi) for detail."
+        }
+      }
     }
   },
   "scripts": {

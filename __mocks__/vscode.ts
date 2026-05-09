@@ -135,6 +135,7 @@ export class LanguageModelChatMessage {
 export interface LanguageModelChatInformation {
   id: string;
   name: string;
+  detail?: string;
   tooltip?: string;
   family: string;
   version: string;
@@ -143,6 +144,9 @@ export interface LanguageModelChatInformation {
   capabilities: {
     toolCalling?: boolean | number;
     imageInput?: boolean;
+  };
+  configurationSchema?: {
+    properties?: Record<string, Record<string, unknown>>;
   };
 }
 
@@ -273,10 +277,34 @@ export const commands = {
   registerCommand: jest.fn(),
 };
 
+export enum StatusBarAlignment {
+  Left = 1,
+  Right = 2,
+}
+
+export interface StatusBarItem {
+  name?: string;
+  text: string;
+  tooltip?: string | { value: string };
+  show(): void;
+  hide(): void;
+  dispose(): void;
+}
+
 export const window = {
   showInputBox: jest.fn(),
   showInformationMessage: jest.fn(),
   showErrorMessage: jest.fn(),
+  showWarningMessage: jest.fn(),
+  showQuickPick: jest.fn(),
+  createStatusBarItem: jest.fn(
+    (_alignment?: StatusBarAlignment, _priority?: number): StatusBarItem => ({
+      text: "",
+      show: jest.fn(),
+      hide: jest.fn(),
+      dispose: jest.fn(),
+    })
+  ),
 };
 
 export const workspace = {
@@ -288,5 +316,21 @@ export const workspace = {
 export const extensions = {
   getExtension: jest.fn(),
 };
+
+export interface ExtensionContext {
+  subscriptions: { push: (item: unknown) => void };
+  secrets: {
+    get: (key: string) => Promise<string | undefined>;
+    store: (key: string, value: string) => Promise<void>;
+    delete: (key: string) => Promise<void>;
+    onDidChange: (...args: unknown[]) => { dispose(): void };
+  };
+}
+
+export enum ConfigurationTarget {
+  Global = 1,
+  Workspace = 2,
+  WorkspaceFolder = 3,
+}
 
 export const version = "1.104.0";

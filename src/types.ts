@@ -111,6 +111,13 @@ export interface OcGoStreamResponse {
     prompt_tokens?: number;
     completion_tokens?: number;
     total_tokens?: number;
+    /** DeepSeek-style cache statistics returned in the final usage chunk. */
+    prompt_cache_hit_tokens?: number;
+    prompt_cache_miss_tokens?: number;
+    /** OpenAI-style nested cache details. */
+    prompt_tokens_details?: {
+      cached_tokens?: number;
+    };
   };
 }
 
@@ -118,6 +125,14 @@ export interface OcGoStreamResponse {
  * API format used by a model
  */
 export type OcGoApiFormat = "openai" | "anthropic";
+
+/**
+ * Reasoning / "thinking" mode of a model.
+ * - "none": no reasoning support; do not show the picker.
+ * - "always": reasoning is always on; picker only exposes effort levels (no off switch).
+ * - "switchable": user can disable reasoning entirely or pick an effort level.
+ */
+export type OcGoThinkingMode = "none" | "always" | "switchable";
 
 /**
  * Model information for OpenCode Go models
@@ -133,6 +148,12 @@ export interface OcGoModelInfo {
   apiFormat: OcGoApiFormat;
   /** If set, this exact temperature value is sent for every request (some models only accept a single value). */
   fixedTemperature?: number;
+  /** Reasoning/thinking mode for the model. Defaults to "none" (no picker). */
+  thinkingMode?: OcGoThinkingMode;
+  /** Supported reasoning effort levels (e.g. ["high", "max"]). When omitted, picker shows enabled/disabled only. */
+  supportedReasoningEfforts?: string[];
+  /** Default reasoning effort level. */
+  defaultReasoningEffort?: string;
 }
 
 /**
@@ -150,6 +171,10 @@ export interface OcGoRequestBody {
   presence_penalty?: number;
   tools?: OcGoTool[];
   tool_choice?: "auto" | "none" | { type: string; function: { name: string } };
+  /** Reasoning effort level (e.g. "low" | "medium" | "high" | "max") for models that support it. */
+  reasoning_effort?: string;
+  /** OpenAI-compatible thinking control object. */
+  thinking?: { type: "enabled" | "disabled"; budget_tokens?: number };
 }
 
 // ============================================================================
@@ -309,6 +334,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     supportsVision: true,
     apiFormat: "openai",
     fixedTemperature: 1,
+    thinkingMode: "always",
   },
   {
     id: "kimi-k2.6",
@@ -320,6 +346,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     supportsVision: true,
     apiFormat: "openai",
     fixedTemperature: 1,
+    thinkingMode: "always",
   },
   {
     id: "mimo-v2-pro",
@@ -390,6 +417,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     supportsTools: true,
     supportsVision: true,
     apiFormat: "openai",
+    thinkingMode: "switchable",
   },
   {
     id: "qwen3.6-plus",
@@ -400,6 +428,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     supportsTools: true,
     supportsVision: true,
     apiFormat: "openai",
+    thinkingMode: "switchable",
   },
   {
     id: "deepseek-v4-flash",
@@ -410,6 +439,9 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     supportsTools: true,
     supportsVision: false,
     apiFormat: "openai",
+    thinkingMode: "switchable",
+    supportedReasoningEfforts: ["high", "max"],
+    defaultReasoningEffort: "max",
   },
   {
     id: "deepseek-v4-pro",
@@ -420,5 +452,8 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     supportsTools: true,
     supportsVision: false,
     apiFormat: "openai",
+    thinkingMode: "switchable",
+    supportedReasoningEfforts: ["high", "max"],
+    defaultReasoningEffort: "max",
   },
 ];

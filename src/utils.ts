@@ -826,8 +826,13 @@ export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 2);
 }
 
+// Vision APIs budget images as a small, fixed token cost (e.g. OpenAI uses
+// ~85-1105 tokens per image depending on detail). The base64 string length is
+// not what is actually counted by the model; estimating from byte size grossly
+// overcounts and was the root cause of spurious "Message exceeds token limit"
+// errors when an image was attached.
 const MIN_IMAGE_TOKENS = 1500;
-const MAX_IMAGE_TOKENS = 6000;
+const MAX_IMAGE_TOKENS = 1500;
 
 /**
  * Estimate message array tokens
