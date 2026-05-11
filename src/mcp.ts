@@ -34,7 +34,12 @@ export class OcGoMcpClient {
       throw new Error("OpenCode Go API key not found");
     }
 
-    debugLog("OCR-CALL", { model: proxyModelId, imageDataLength: imageData.length, promptLength: prompt.length });
+    const imageSizeBytes = Math.ceil((imageData.length * 3) / 4);
+    debugLog("OCR-CALL", {
+      model: proxyModelId,
+      imageSizeKB: Math.round(imageSizeBytes / 1024),
+      promptLength: prompt.length,
+    });
 
     // Call Vision model via chat completions endpoint
     const response = await fetch(

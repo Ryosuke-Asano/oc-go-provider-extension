@@ -133,6 +133,8 @@ export interface OcGoModelInfo {
   maxOutput: number;
   supportsTools: boolean;
   supportsVision: boolean;
+  /** Whether the model supports configurable reasoning/thinking levels. */
+  supportsReasoning?: boolean;
   apiFormat: OcGoApiFormat;
   /** If set, this exact temperature value is sent for every request (some models only accept a single value). */
   fixedTemperature?: number;
@@ -296,6 +298,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     maxOutput: 131072,
     supportsTools: true,
     supportsVision: false,
+    supportsReasoning: false,
     apiFormat: "openai",
     thinkingMode: "none",
   },
@@ -307,6 +310,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     maxOutput: 131072,
     supportsTools: true,
     supportsVision: false,
+    supportsReasoning: false,
     apiFormat: "openai",
     thinkingMode: "none",
   },
@@ -318,6 +322,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     maxOutput: 65536,
     supportsTools: true,
     supportsVision: true,
+    supportsReasoning: false,
     apiFormat: "openai",
     fixedTemperature: 1,
     thinkingMode: "always",
@@ -330,6 +335,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     maxOutput: 262144,
     supportsTools: true,
     supportsVision: true,
+    supportsReasoning: false,
     apiFormat: "openai",
     fixedTemperature: 1,
     thinkingMode: "always",
@@ -342,6 +348,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     maxOutput: 131072,
     supportsTools: true,
     supportsVision: false,
+    supportsReasoning: true,
     apiFormat: "openai",
     thinkingMode: "switchable",
   },
@@ -353,6 +360,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     maxOutput: 65536,
     supportsTools: true,
     supportsVision: true,
+    supportsReasoning: true,
     apiFormat: "openai",
     thinkingMode: "switchable",
   },
@@ -364,6 +372,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     maxOutput: 131072,
     supportsTools: true,
     supportsVision: false,
+    supportsReasoning: true,
     apiFormat: "openai",
     thinkingMode: "switchable",
   },
@@ -375,6 +384,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     maxOutput: 65536,
     supportsTools: true,
     supportsVision: true,
+    supportsReasoning: true,
     apiFormat: "openai",
     thinkingMode: "switchable",
   },
@@ -408,6 +418,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     maxOutput: 65536,
     supportsTools: true,
     supportsVision: true,
+    supportsReasoning: true,
     apiFormat: "openai",
     thinkingMode: "switchable",
   },
@@ -419,6 +430,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     maxOutput: 65536,
     supportsTools: true,
     supportsVision: true,
+    supportsReasoning: true,
     apiFormat: "openai",
     thinkingMode: "switchable",
   },
@@ -430,6 +442,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     maxOutput: 393216,
     supportsTools: true,
     supportsVision: false,
+    supportsReasoning: true,
     apiFormat: "openai",
     thinkingMode: "switchable",
   },
@@ -441,6 +454,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     maxOutput: 393216,
     supportsTools: true,
     supportsVision: false,
+    supportsReasoning: true,
     apiFormat: "openai",
     thinkingMode: "switchable",
   },

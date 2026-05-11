@@ -139,6 +139,7 @@ export class LanguageModelChatMessage {
 export interface LanguageModelChatInformation {
   id: string;
   name: string;
+  detail?: string;
   tooltip?: string;
   family: string;
   version: string;

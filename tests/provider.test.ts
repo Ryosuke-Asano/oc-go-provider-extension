@@ -179,4 +179,192 @@ describe("OcGoChatModelProvider", () => {
     );
     expect(count).toBe(Math.ceil(text.length / 2));
   });
+
+  it("should attach configurationSchema to reasoning base models", async () => {
+    const provider = new OcGoChatModelProvider(
+      secrets as unknown as vscode.SecretStorage,
+      "jest-agent"
+    );
+    const models = await provider.provideLanguageModelChatInformation(
+      { silent: true } as vscode.PrepareLanguageModelChatModelOptions,
+      createToken()
+    );
+
+    const deepseek = models.find((m) => m.id === "deepseek-v4-pro");
+    expect(deepseek).toBeDefined();
+    expect((deepseek as any).configurationSchema).toBeDefined();
+    expect((deepseek as any).configurationSchema.properties.thinking_effort.enum).toEqual(
+      ["high", "max", "none"]
+    );
+
+    // Kimi/GLM: no configurationSchema — APIs ignore disabled toggle
+    const kimi = models.find((m) => m.id === "kimi-k2.5");
+    expect(kimi).toBeDefined();
+    expect((kimi as any).configurationSchema).toBeUndefined();
+
+    // Non-reasoning models should NOT have configurationSchema
+    const minimax = models.find((m) => m.id === "minimax-m2.5");
+    expect(minimax).toBeDefined();
+    expect((minimax as any).configurationSchema).toBeUndefined();
+  });
+
+  it("should inject reasoning_effort via modelConfiguration for DeepSeek", async () => {
+    const provider = new OcGoChatModelProvider(
+      secrets as unknown as vscode.SecretStorage,
+      "jest-agent"
+    );
+    const models = await provider.provideLanguageModelChatInformation(
+      { silent: true } as vscode.PrepareLanguageModelChatModelOptions,
+      createToken()
+    );
+    const deepseek = models.find((m) => m.id === "deepseek-v4-pro");
+    if (!deepseek) {
+      throw new Error("deepseek-v4-pro not found");
+    }
+
+    const messages = [vscode.LanguageModelChatMessage.User("hello")];
+    const progress = {
+      report: jest.fn(),
+    } as unknown as vscode.Progress<vscode.LanguageModelResponsePart>;
+
+    await provider.provideLanguageModelChatResponse(
+      deepseek,
+      messages,
+      {
+        modelConfiguration: { thinking_effort: "high" },
+      } as any,
+      progress,
+      createToken()
+    );
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    const requestInit = (global.fetch as jest.Mock).mock.calls[0]?.[1] as {
+      body?: string;
+    };
+    expect(requestInit.body).toBeDefined();
+    const requestBody = JSON.parse(requestInit.body ?? "{}");
+    expect(requestBody.model).toBe("deepseek-v4-pro");
+    expect(requestBody.reasoning_effort).toBe("high");
+  });
+
+  it("should inject chat_template_kwargs via modelConfiguration for MiMo (was Kimi)", async () => {
+    const provider = new OcGoChatModelProvider(
+      secrets as unknown as vscode.SecretStorage,
+      "jest-agent"
+    );
+    const models = await provider.provideLanguageModelChatInformation(
+      { silent: true } as vscode.PrepareLanguageModelChatModelOptions,
+      createToken()
+    );
+    const mimo = models.find((m) => m.id === "mimo-v2-pro");
+    if (!mimo) {
+      throw new Error("mimo-v2-pro not found");
+    }
+
+    const messages = [vscode.LanguageModelChatMessage.User("hello")];
+    const progress = {
+      report: jest.fn(),
+    } as unknown as vscode.Progress<vscode.LanguageModelResponsePart>;
+
+    await provider.provideLanguageModelChatResponse(
+      mimo,
+      messages,
+      {
+        modelConfiguration: { thinking_effort: "on" },
+      } as any,
+      progress,
+      createToken()
+    );
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    const requestInit = (global.fetch as jest.Mock).mock.calls[0]?.[1] as {
+      body?: string;
+    };
+    expect(requestInit.body).toBeDefined();
+    const requestBody = JSON.parse(requestInit.body ?? "{}");
+    expect(requestBody.model).toBe("mimo-v2-pro");
+    expect(requestBody.chat_template_kwargs).toEqual({ enable_thinking: true });
+  });
+
+  it("should inject chat_template_kwargs for MiMo when thinking enabled", async () => {
+    const provider = new OcGoChatModelProvider(
+      secrets as unknown as vscode.SecretStorage,
+      "jest-agent"
+    );
+    const models = await provider.provideLanguageModelChatInformation(
+      { silent: true } as vscode.PrepareLanguageModelChatModelOptions,
+      createToken()
+    );
+    const mimo = models.find((m) => m.id === "mimo-v2-pro");
+    if (!mimo) {
+      throw new Error("mimo-v2-pro not found");
+    }
+
+    const messages = [vscode.LanguageModelChatMessage.User("hello")];
+    const progress = {
+      report: jest.fn(),
+    } as unknown as vscode.Progress<vscode.LanguageModelResponsePart>;
+
+    await provider.provideLanguageModelChatResponse(
+      mimo,
+      messages,
+      {
+        modelConfiguration: { thinking_effort: "on" },
+      } as any,
+      progress,
+      createToken()
+    );
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    const requestInit = (global.fetch as jest.Mock).mock.calls[0]?.[1] as {
+      body?: string;
+    };
+    expect(requestInit.body).toBeDefined();
+    const requestBody = JSON.parse(requestInit.body ?? "{}");
+    expect(requestBody.model).toBe("mimo-v2-pro");
+    expect(requestBody.chat_template_kwargs).toEqual({
+      enable_thinking: true,
+    });
+    expect(requestBody.thinking).toBeUndefined();
+  });
+
+  it("should inject both reasoning_effort AND thinking for DeepSeek high", async () => {
+    const provider = new OcGoChatModelProvider(
+      secrets as unknown as vscode.SecretStorage,
+      "jest-agent"
+    );
+    const models = await provider.provideLanguageModelChatInformation(
+      { silent: true } as vscode.PrepareLanguageModelChatModelOptions,
+      createToken()
+    );
+    const deepseek = models.find((m) => m.id === "deepseek-v4-pro");
+    if (!deepseek) {
+      throw new Error("deepseek-v4-pro not found");
+    }
+
+    const messages = [vscode.LanguageModelChatMessage.User("hello")];
+    const progress = {
+      report: jest.fn(),
+    } as unknown as vscode.Progress<vscode.LanguageModelResponsePart>;
+
+    await provider.provideLanguageModelChatResponse(
+      deepseek,
+      messages,
+      {
+        modelConfiguration: { thinking_effort: "high" },
+      } as any,
+      progress,
+      createToken()
+    );
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    const requestInit = (global.fetch as jest.Mock).mock.calls[0]?.[1] as {
+      body?: string;
+    };
+    expect(requestInit.body).toBeDefined();
+    const requestBody = JSON.parse(requestInit.body ?? "{}");
+    expect(requestBody.model).toBe("deepseek-v4-pro");
+    expect(requestBody.reasoning_effort).toBe("high");
+    expect(requestBody.thinking).toEqual({ type: "enabled" });
+  });
 });
