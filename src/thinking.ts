@@ -118,7 +118,7 @@ export function getThinkingSchemaForModel(
 
 /**
  * Get API parameters for the selected thinking level.
- * Returns undefined if the level is "off"/"none" (disabled) or the model has no config.
+ * For "off"/"none", returns the disable param (e.g. thinking:{type:"disabled"}).
  */
 export function getThinkingParams(
   modelId: string,

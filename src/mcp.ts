@@ -34,6 +34,7 @@ export class OcGoMcpClient {
       throw new Error("OpenCode Go API key not found");
     }
 
+    // Log image metadata for tracking (never log user prompts)
     const imageSizeBytes = Math.ceil((imageData.length * 3) / 4);
     debugLog("OCR-CALL", {
       model: proxyModelId,

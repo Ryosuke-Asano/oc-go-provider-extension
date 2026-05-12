@@ -426,25 +426,11 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
     // Only skip OCR when the SAME image reappears at the SAME message index
     // (VS Code re-attach). Different index = user deliberately re-sent → re-OCR.
     let newestImageIdx = -1;
-    const imgHashes: string[] = [];
     for (let i = messages.length - 1; i >= 0; i--) {
       const imgs = messages[i].content
         .map((p) => extractImageData(p))
         .filter((x): x is NonNullable<typeof x> => !!x);
       if (imgs.length > 0) {
-        for (const img of imgs) {
-          imgHashes.push(
-            img.mimeType +
-              "|" +
-              Buffer.from(
-                img.data.length <= 2048
-                  ? img.data
-                  : img.data.subarray(0, 1024),
-              ).toString("base64") +
-              "|" +
-              img.data.length,
-          );
-        }
         newestImageIdx = i;
         break;
       }
@@ -586,6 +572,21 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
             reason: "same image, same index (VS Code re-attach)",
             imageCount: images.length,
           });
+        }
+
+        // Always include the message: with OCR text (anyOcred) or just
+        // user text (all skipped — OCR already lives in model context).
+        if (!anyOcred) {
+          const textContent = textParts.join(" ");
+          processedMessages.push(
+            vscode.LanguageModelChatMessage.User([
+              textContent
+                ? new vscode.LanguageModelTextPart(textContent)
+                : new vscode.LanguageModelTextPart(
+                    "[Image context already described above]",
+                  ),
+            ]),
+          );
         }
 
         if (anyOcred) {
