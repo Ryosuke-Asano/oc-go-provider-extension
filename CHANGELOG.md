@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-05-14
+
+### Fixed
+
+- **Models missing from chat model picker** (VS Code 1.120): VS Code 1.120 changed the chat picker to require `isUserSelectable: true` to be explicitly set. All OpenCode Go models now set this flag so they appear in the picker.
+
+## [0.8.0] - 2026-05-14
+
+### Changed
+
+- **VS Code 1.120 compatibility** (`chatProvider` proposed API v5):
+  - Reasoning content now reported via `LanguageModelThinkingPart` (VS Code 1.120+) for native thinking display, falling back to `LanguageModelDataPart` on older hosts.
+  - Incoming `LanguageModelThinkingPart` in conversation history extracted as `reasoning_content` for Kimi.
+  - Updated `LanguageModelConfigurationSchema` — removed `enumDescriptions` (dropped upstream in v5; `enumItemLabels` remain).
+  - Added `targetChatSessionType`, `multiplierNumeric`, `ChatRequest.modelConfiguration` to proposed type declarations.
+- Bumped `@types/vscode` dev dependency to `^1.120.0`.
+
+## [0.7.0] - 2026-05-09
+
+### Added
+
+- **Reasoning Effort picker** in the VS Code model selector for models that support thinking modes:
+  - DeepSeek V4 Flash / V4 Pro: `Disabled` / `High` / `Maximum` (default `Maximum`)
+  - Qwen3.5 Plus / Qwen3.6 Plus: `Disabled` / `Thinking`
+  - Kimi K2.5 / K2.6: `Thinking` (always on)
+  - Selection is sent as `reasoning_effort` and `thinking: { type: "enabled" | "disabled" }` in the OpenCode Go request body.
+- **Configurable vision proxy model** via the new `opencodego.visionProxyModel` setting (default `kimi-k2.6`). When the active chat model has no native vision support, attached images are sent to this proxy model and the textual description is forwarded to the active model.
+- **`OpenCode Go: Select Vision Proxy Model` command** with a Quick Pick listing every vision-capable model ordered fastest → most detailed, with per-model latency / quality hints.
+- **Status bar token usage indicator**: shows the latest prompt size against the active model's context window, plus a tooltip with cumulative input / output tokens for the session and a cache hit rate when the API surfaces cache stats (e.g. DeepSeek's `prompt_cache_hit_tokens`).
+- Per-request debug log entries for `thinkingMode`, `thinking`, and `reasoning_effort` so users can confirm what was sent to the upstream API.
+- Detailed proxy / OCR pipeline logging (`OCR: message has images`, `analyzeImage: proxy response`, `OCR: pipeline complete`) to aid diagnosis when image attachments do not behave as expected.
+- README sections documenting Reasoning Effort behavior, the vision proxy flow (with a latency tip), and a settings table.
+
+### Fixed
+
+- **Image attachments no longer trigger spurious `Message exceeds token limit.` errors.** Vision APIs budget images as a small fixed token cost; estimating from base64 byte size grossly overcounted. Image cost is now pinned to a flat 1500-token estimate.
+- Replaced the silent vision-fallback model-switch with an explicit OCR proxy flow so users always interact with the model they selected.
+- `processImagesForNonVisionModel` now preserves the original message role when replacing image content with text (assistant history no longer collapses to user).
+- OCR proxy errors are now caught and surfaced as `[Vision proxy failed: …]` in-prompt instead of aborting the entire chat request.
+
+### Changed
+
+- `analyzeImage` accepts the proxy model id as an argument, removing the hard-coded `mimo-v2-omni` dependency.
+- Enabled the `chatProvider` proposed VS Code API to expose `configurationSchema.properties.reasoningEffort` in the model picker.
+
 ## [0.6.1] - 2026-05-08
 
 ### Fixed

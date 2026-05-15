@@ -15,6 +15,7 @@ export default [
       ".vscode/**",
       ".idea/**",
       "*.log",
+      "src/vscode.proposed.*.d.ts",
     ],
   },
   {

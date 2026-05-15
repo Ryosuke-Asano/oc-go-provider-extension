@@ -343,9 +343,19 @@ export function convertMessages(
       }
     }
 
-    // Extract reasoning content from custom data parts (preserved from previous turns)
+    // Extract reasoning content preserved from previous turns.
+    // VS Code 1.120+: stored as LanguageModelThinkingPart (.value field).
+    // Older hosts: stored as LanguageModelDataPart with our custom MIME type.
     let reasoningContent = "";
+    const ThinkingPart = (vscode as unknown as Record<string, unknown>)
+      .LanguageModelThinkingPart as
+      | (new (value: string) => { readonly value: string })
+      | undefined;
     for (const part of msg.content) {
+      if (ThinkingPart && part instanceof ThinkingPart) {
+        reasoningContent = part.value;
+        continue;
+      }
       if (typeof part === "object" && part !== null) {
         const p = part as { mimeType?: string; data?: Uint8Array };
         if (
@@ -358,7 +368,7 @@ export function convertMessages(
               reasoningContent = json.content;
             }
           } catch {
-            // Ignore malformed reasoning data parts
+            // ignore malformed
           }
         }
       }
@@ -826,8 +836,13 @@ export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 2);
 }
 
+// Vision APIs budget images as a small, fixed token cost (e.g. OpenAI uses
+// ~85-1105 tokens per image depending on detail). The base64 string length is
+// not what is actually counted by the model; estimating from byte size grossly
+// overcounts and was the root cause of spurious "Message exceeds token limit"
+// errors when an image was attached.
 const MIN_IMAGE_TOKENS = 1500;
-const MAX_IMAGE_TOKENS = 6000;
+const MAX_IMAGE_TOKENS = 1500;
 
 /**
  * Estimate message array tokens
