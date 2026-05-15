@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-05-14
+
+### Fixed
+
+- **Models missing from chat model picker** (VS Code 1.120): VS Code 1.120 changed the chat picker to require `isUserSelectable: true` to be explicitly set. All OpenCode Go models now set this flag so they appear in the picker.
+
+## [0.8.0] - 2026-05-14
+
+### Changed
+
+- **VS Code 1.120 compatibility** (`chatProvider` proposed API v5):
+  - Reasoning content now reported via `LanguageModelThinkingPart` (VS Code 1.120+) for native thinking display, falling back to `LanguageModelDataPart` on older hosts.
+  - Incoming `LanguageModelThinkingPart` in conversation history extracted as `reasoning_content` for Kimi.
+  - Updated `LanguageModelConfigurationSchema` — removed `enumDescriptions` (dropped upstream in v5; `enumItemLabels` remain).
+  - Added `targetChatSessionType`, `multiplierNumeric`, `ChatRequest.modelConfiguration` to proposed type declarations.
+- Bumped `@types/vscode` dev dependency to `^1.120.0`.
+
 ## [0.7.0] - 2026-05-09
 
 ### Added

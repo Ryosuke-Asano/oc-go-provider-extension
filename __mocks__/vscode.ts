@@ -77,6 +77,10 @@ export type LanguageModelInputPart =
   | LanguageModelToolCallPart
   | LanguageModelDataPart;
 
+export class LanguageModelThinkingPart {
+  constructor(public readonly value: string) {}
+}
+
 export class LanguageModelChatMessage {
   role: LanguageModelChatMessageRole;
   content: LanguageModelInputPart[];

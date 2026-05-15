@@ -349,11 +349,17 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
           },
         };
 
+        // Cast to proposed-API type to set proposed-only fields.
+        const proposed = base as LanguageModelChatInformation & {
+          configurationSchema?: unknown;
+          isUserSelectable?: boolean;
+        };
+        // VS Code 1.120+: explicit opt-in so models appear in the chat
+        // model picker (Language Models panel shows them regardless).
+        proposed.isUserSelectable = true;
         const configurationSchema = buildReasoningSchema(model);
         if (configurationSchema) {
-          (base as LanguageModelChatInformation & {
-            configurationSchema?: unknown;
-          }).configurationSchema = configurationSchema;
+          proposed.configurationSchema = configurationSchema;
         }
         return base;
       }
@@ -1418,9 +1424,11 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
   }
 
   /**
-   * Report accumulated reasoning content to VS Code Chat UI via LanguageModelDataPart.
-   * This preserves reasoning content in the conversation history so it can be
-   * included in subsequent requests (required by Moonshot AI/Kimi when thinking is enabled).
+   * Report accumulated reasoning content to VS Code Chat UI.
+   * Uses LanguageModelThinkingPart (VS Code 1.120+) for native thinking display
+   * when available, falling back to LanguageModelDataPart for older hosts.
+   * Both paths preserve reasoning in conversation history for Kimi's
+   * reasoning_content requirement.
    */
   private reportReasoningContent(
     progress: vscode.Progress<vscode.LanguageModelResponsePart>
@@ -1429,15 +1437,24 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
       return;
     }
     try {
-      progress.report(
-        vscode.LanguageModelDataPart.json(
-          {
-            type: "reasoning",
-            content: this._reasoningContentBuffer,
-          },
-          "application/vnd.opencode-go.reasoning+json"
-        )
-      );
+      const ThinkingPart = (vscode as unknown as Record<string, unknown>)
+        .LanguageModelThinkingPart as
+        | (new (value: string) => vscode.LanguageModelThinkingPart)
+        | undefined;
+      if (ThinkingPart) {
+        // Cast required: LanguageModelThinkingPart extends LanguageModelResponsePart2
+        // at runtime (VS Code 1.120+) but isn't in the stable Progress<> type.
+        (progress as vscode.Progress<unknown>).report(
+          new ThinkingPart(this._reasoningContentBuffer)
+        );
+      } else {
+        progress.report(
+          vscode.LanguageModelDataPart.json(
+            { type: "reasoning", content: this._reasoningContentBuffer },
+            "application/vnd.opencode-go.reasoning+json"
+          )
+        );
+      }
     } catch (e) {
       console.warn(
         "[OpenCode Go Model Provider] Failed to report reasoning content via progress",

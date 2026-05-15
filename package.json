@@ -2,7 +2,7 @@
   "name": "opencode-go-vscode-chat",
   "displayName": "OpenCode Go Chat Provider for VS Code",
   "description": "Integrates OpenCode Go models (GLM-5/5.1, Kimi K2.5/K2.6, MiMo-V2/V2.5, MiniMax M2.5/M2.7, Qwen3.5/3.6 Plus, DeepSeek V4 Flash/Pro) into VS Code Copilot Chat with tool calling and vision",
-  "version": "0.7.0",
+  "version": "0.8.1",
   "publisher": "Ryosuke-Asano",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -11,7 +11,7 @@
     "url": "https://github.com/Ryosuke-Asano/oc-go-provider-extension"
   },
   "engines": {
-    "vscode": "^1.104.0"
+    "vscode": "^1.120.0"
   },
   "categories": [
     "AI",
@@ -114,7 +114,7 @@
     "@eslint/js": "^9.21.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.1.0",
-    "@types/vscode": "^1.104.0",
+    "@types/vscode": "^1.120.0",
     "@vscode/dts": "^0.4.1",
     "eslint": "^9.39.2",
     "jest": "^30.2.0",
