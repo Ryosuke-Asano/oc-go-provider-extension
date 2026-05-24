@@ -13,6 +13,10 @@ export class LanguageModelTextPart {
   constructor(public readonly value: string) {}
 }
 
+export class LanguageModelThinkingPart {
+  constructor(public readonly value: string) {}
+}
+
 import type { Json } from "../src/types";
 
 export class LanguageModelDataPart {
@@ -79,7 +83,8 @@ export type LanguageModelInputPart =
   | LanguageModelTextPart
   | LanguageModelToolResultPart
   | LanguageModelToolCallPart
-  | LanguageModelDataPart;
+  | LanguageModelDataPart
+  | LanguageModelThinkingPart;
 
 export class LanguageModelChatMessage {
   role: LanguageModelChatMessageRole;
@@ -139,6 +144,8 @@ export class LanguageModelChatMessage {
 export interface LanguageModelChatInformation {
   id: string;
   name: string;
+  detail?: string;
+  isUserSelectable?: boolean;
   tooltip?: string;
   family: string;
   version: string;
@@ -176,7 +183,34 @@ export interface LanguageModelChatProvider<T = LanguageModelChatInformation> {
   ): Promise<T[]> | T[];
 }
 
-export interface LanguageModelTool {
+export interface ExtensionContext {
+  secrets: SecretStorage;
+  subscriptions: Disposable[];
+}
+
+export interface Disposable {
+  dispose(): void;
+}
+
+export class Disposable {
+  dispose(): void {}
+
+  static from(...items: Array<{ dispose(): void }>): Disposable {
+    return {
+      dispose: () => {
+        for (const item of items) {
+          item.dispose();
+        }
+      },
+    };
+  }
+}
+
+export interface ProviderResult<T> {
+  // Placeholder type for VS Code compatibility in tests
+}
+
+export interface LanguageModelTool<TInput = unknown> {
   name: string;
   description: string;
   inputSchema: Record<string, Json>;
@@ -184,8 +218,20 @@ export interface LanguageModelTool {
 
 export type LanguageModelChatTool = LanguageModelTool;
 
-export interface Disposable {
-  dispose(): void;
+export interface LanguageModelToolInvocationOptions<TInput = unknown> {
+  input: TInput;
+}
+
+export interface LanguageModelToolInvocationPrepareOptions<TInput = unknown> {
+  input: TInput;
+}
+
+export interface PreparedToolInvocation {
+  invocationMessage: string;
+}
+
+export class LanguageModelToolResult {
+  constructor(public readonly content: Array<unknown>) {}
 }
 
 export interface StatusBarItem {
@@ -240,7 +286,8 @@ export type LanguageModelResponsePart =
   | LanguageModelTextPart
   | LanguageModelToolCallPart
   | LanguageModelToolResultPart
-  | LanguageModelDataPart;
+  | LanguageModelDataPart
+  | LanguageModelThinkingPart;
 
 export class CancellationError extends Error {
   constructor() {
@@ -289,6 +336,7 @@ export const secrets = {
 
 export const lm = {
   registerLanguageModelChatProvider: jest.fn(),
+  registerTool: jest.fn(),
 };
 
 export const commands = {
@@ -314,7 +362,19 @@ export const window = {
   }),
 };
 
+export class Uri {
+  static file(path: string): Uri {
+    return new Uri(path);
+  }
+  constructor(public readonly fsPath: string) {}
+}
+
 export const workspace = {
+  fs: {
+    readFile: jest.fn(async (_uri: Uri) => {
+      return new Uint8Array();
+    }),
+  },
   getConfiguration: jest.fn((_section?: string) => ({
     get: <T>(_section: string, defaultValue: T): T => defaultValue,
   })),

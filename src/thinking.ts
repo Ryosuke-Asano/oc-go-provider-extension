@@ -1,152 +1,189 @@
-import type { OcGoModelInfo } from "./types";
+/**
+ * Minimal thinking/reasoning configuration per model family.
+ * Maps model families to their supported thinking levels and API parameters.
+ *
+ * Per-model API params (verified via official docs + E2E probe):
+ * - DeepSeek:               reasoning_effort: level + thinking: { type: "enabled|disabled" }
+ * - MiMo (Xiaomi):          chat_template_kwargs: { enable_thinking: true|false }
+ * - Qwen (Alibaba):         chat_template_kwargs: { enable_thinking: true|false }
+ * - Kimi/GLM:               Thinking toggle removed — APIs ignore disabled (always think)
+ * - MiniMax:                No thinking params (Anthropic endpoint)
+ */
 
-export type ThinkingMode = "always" | "switchable" | "none";
-
-export interface ThinkingSchema {
-  type: "object";
-  properties: Record<string, unknown>;
-}
+export type ThinkingLevel =
+  | "none"
+  | "off"
+  | "on"
+  | "low"
+  | "medium"
+  | "high"
+  | "max";
 
 interface FamilyConfig {
-  /** Schema enum values (display order) */
-  levels: string[];
-  /** Map level → API request parameters */
-  getParams: (
-    level: string
-  ) => Record<string, unknown> | null;
-  /** Suffix used for stable-API variant model IDs */
-  suffix: string;
+  label: string;
+  levels: { value: string; label: string }[];
+  getParams: (level: string) => Record<string, unknown> | undefined;
 }
 
-// Sorted longest-key-first so "mimo-v2.5" matches before "mimo-v2"
-const FAMILIES: Record<string, FamilyConfig> = {
-  "deepseek-v4": {
-    levels: ["max", "high", "none"],
-    getParams: (level) => {
-      switch (level) {
-        case "max":
-          return {
-            reasoning_effort: "max",
-            thinking: { type: "enabled" },
-          };
-        case "high":
-          return {
-            reasoning_effort: "high",
-            thinking: { type: "enabled" },
-          };
-        case "none":
-          return {
-            reasoning_effort: "none",
-            thinking: { type: "disabled" },
-          };
-        default:
-          return null;
-      }
-    },
-    suffix: "reasoning",
-  },
-  "mimo-v2.5": {
-    levels: ["on", "off"],
-    getParams: (level) => ({
-      chat_template_kwargs: { enable_thinking: level === "on" },
-    }),
-    suffix: "thinking",
-  },
-  "mimo-v2": {
-    levels: ["on", "off"],
-    getParams: (level) => ({
-      chat_template_kwargs: { enable_thinking: level === "on" },
-    }),
-    suffix: "thinking",
-  },
-  "qwen3.6": {
-    levels: ["on", "off"],
-    getParams: (level) => ({
-      chat_template_kwargs: { enable_thinking: level === "on" },
-    }),
-    suffix: "thinking",
-  },
-  "qwen3.5": {
-    levels: ["on", "off"],
-    getParams: (level) => ({
-      chat_template_kwargs: { enable_thinking: level === "on" },
-    }),
-    suffix: "thinking",
+/** DeepSeek: requires BOTH reasoning_effort AND thinking toggle. Default = high. */
+const DEEPSEEK_CONFIG: FamilyConfig = {
+  label: "Thinking",
+  levels: [
+    { value: "high", label: "High" },
+    { value: "max", label: "Max" },
+    { value: "none", label: "None" },
+  ],
+  getParams: (level) => {
+    if (level === "none") return { thinking: { type: "disabled" as const } };
+    return {
+      reasoning_effort: level,
+      thinking: { type: "enabled" as const },
+    };
   },
 };
 
-function getFamilyKey(modelId: string): string | undefined {
-  const keys = Object.keys(FAMILIES).sort(
-    (a, b) => b.length - a.length
-  );
-  return keys.find((k) => modelId.startsWith(k));
+/** GLM (Zhipu) and Kimi (Moonshot) — REMOVED from family configs.
+ *  Their APIs ignore thinking: {type:"disabled"} and always produce reasoning.
+ *  A non-functional Off toggle would mislead users, so we omit these families.
+ *  Models: glm-5, glm-5.1, kimi-k2.5, kimi-k2.6 (supportsReasoning: false) */
+
+/** MiMo (Xiaomi): uses chat_template_kwargs. Default = on. */
+const MIMO_CONFIG: FamilyConfig = {
+  label: "Thinking",
+  levels: [
+    { value: "on", label: "On" },
+    { value: "off", label: "Off" },
+  ],
+  getParams: (level) => {
+    if (level === "off") return { chat_template_kwargs: { enable_thinking: false } };
+    return { chat_template_kwargs: { enable_thinking: true } };
+  },
+};
+
+/** Qwen (Alibaba): uses chat_template_kwargs. Default = on. */
+const QWEN_CONFIG: FamilyConfig = {
+  label: "Thinking",
+  levels: [
+    { value: "on", label: "On" },
+    { value: "off", label: "Off" },
+  ],
+  getParams: (level) => {
+    if (level === "off") return { chat_template_kwargs: { enable_thinking: false } };
+    return { chat_template_kwargs: { enable_thinking: true } };
+  },
+};
+
+const FAMILY_CONFIGS: Record<string, FamilyConfig> = {
+  "deepseek-v4": DEEPSEEK_CONFIG,
+  "mimo-v2": MIMO_CONFIG,
+  "mimo-v2.5": MIMO_CONFIG,
+  "qwen3": QWEN_CONFIG,
+  "qwen3.5": QWEN_CONFIG,
+  "qwen3.6": QWEN_CONFIG,
+};
+
+/** Note: Kimi (kimi-k2.*) and GLM (glm-5*) are intentionally absent.
+ *  Their proxies ignore thinking: {type:"disabled"} — see probe results. */
+
+function getFamilyConfig(modelId: string): FamilyConfig | undefined {
+  // Sort by key length descending so "mimo-v2.5" matches before "mimo-v2"
+  const families = Object.keys(FAMILY_CONFIGS).sort((a, b) => b.length - a.length);
+  const family = families.find((f) => modelId.startsWith(f));
+  return family ? FAMILY_CONFIGS[family] : undefined;
 }
 
+/**
+ * Build the JSON schema for the thinking subsection of the model configuration.
+ * When a property has group: "navigation", VS Code renders it as a ">" submenu
+ * in the model picker. enumItemLabels provide human-readable labels.
+ * The first enum value is the default when no selection is made yet.
+ */
 export function getThinkingSchemaForModel(
   modelId: string
-): ThinkingSchema | null {
-  const key = getFamilyKey(modelId);
-  if (!key) return null;
-  const family = FAMILIES[key];
+): { readonly properties?: Record<string, unknown> } | undefined {
+  const config = getFamilyConfig(modelId);
+  if (!config) return undefined;
   return {
-    type: "object",
     properties: {
       thinking_effort: {
         type: "string",
-        enum: family.levels,
-        enumItemLabels: family.levels.map((l) => {
-          if (l === "none") return "Disabled";
-          if (l === "on") return "Thinking";
-          if (l === "off") return "No Thinking";
-          return l.charAt(0).toUpperCase() + l.slice(1);
-        }),
-        description: `Reasoning effort for this model`,
+        enum: config.levels.map((l) => l.value),
+        enumItemLabels: config.levels.map((l) => l.label),
+        description: config.label,
         group: "navigation",
       },
     },
   };
 }
 
+/**
+ * Get API parameters for the selected thinking level.
+ * For "off"/"none", returns the disable param (e.g. thinking:{type:"disabled"}).
+ */
 export function getThinkingParams(
   modelId: string,
-  effort?: string
-): Record<string, unknown> | null {
-  if (!effort) return null;
-  const key = getFamilyKey(modelId);
-  if (!key) return null;
-  return FAMILIES[key].getParams(effort);
+  level: string | undefined
+): Record<string, unknown> | undefined {
+  if (!level) return undefined;
+  const config = getFamilyConfig(modelId);
+  if (!config) return undefined;
+  const validLevels = config.levels.map((l) => l.value);
+  if (!validLevels.includes(level)) return undefined;
+  return config.getParams(level);
 }
 
-export function parseVariantModelId(
-  modelId: string
-): { baseId: string; level?: string } {
-  for (const [key, family] of Object.entries(FAMILIES)) {
-    const suffix = `-${family.suffix}`;
-    if (modelId.endsWith(suffix)) {
-      const baseId = modelId.slice(0, -suffix.length);
-      // Only accept if the base is a known family prefix
-      if (baseId.startsWith(key)) {
-        // Derive the level from the suffix mapping
-        // The suffix itself indicates thinking is enabled
-        const level = family.levels[0]; // First level = enabled
-        return { baseId, level };
+/**
+ * Parse a variant model ID to extract the base model ID and thinking level.
+ * Example: "deepseek-v4-flash-high" -> { baseId: "deepseek-v4-flash", level: "high" }
+ * Note: used for stable-API fallback only; the primary path reads from modelConfiguration.
+ */
+export function parseVariantModelId(modelId: string): {
+  baseId: string;
+  level: string | undefined;
+} {
+  for (const suffix of [
+    "none",
+    "off",
+    "on",
+    "low",
+    "medium",
+    "high",
+    "max",
+  ]) {
+    if (modelId.endsWith(`-${suffix}`)) {
+      const baseId = modelId.slice(0, -(suffix.length + 1));
+      if (getFamilyConfig(baseId)) {
+        return { baseId, level: suffix };
       }
     }
   }
-  return { baseId: modelId };
+  return { baseId: modelId, level: undefined };
 }
 
-export function createModelVariants(
-  model: OcGoModelInfo
-): OcGoModelInfo[] {
-  if (model.thinkingMode !== "switchable") return [];
-  const key = getFamilyKey(model.id);
-  if (!key) return [];
-  const family = FAMILIES[key];
-  // Create one variant per level (skip first = default)
-  return family.levels.slice(1).map((level) => ({
-    ...model,
-    id: `${model.id}-${family.suffix}`,
-    displayName: `${model.displayName} (${level === "on" || level === "max" || level === "high" ? "Thinking" : level})`,
+/**
+ * Create model variants for stable-API fallback when configurationSchema
+ * (proposed API) is not supported by the user's VS Code build.
+ * Ordered to match the schema enum order.
+ */
+export function createModelVariants(baseModel: {
+  id: string;
+  name: string;
+  displayName: string;
+  contextWindow: number;
+  maxOutput: number;
+  supportsTools: boolean;
+  supportsVision: boolean;
+  supportsReasoning?: boolean;
+  apiFormat: string;
+  fixedTemperature?: number;
+}): typeof baseModel[] {
+  const config = getFamilyConfig(baseModel.id);
+  if (!config) return [];
+
+  return config.levels.map((level) => ({
+    ...baseModel,
+    id: `${baseModel.id}-${level.value}`,
+    name: `${baseModel.name} (${level.label})`,
+    displayName: `${baseModel.displayName} (${level.label})`,
   }));
 }

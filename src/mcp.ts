@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { DEFAULT_VISION_PROXY_MODEL } from "./types";
+import { getVisionProxyModelId } from "./utils";
 import { debugLog } from "./logging";
 
 /**
@@ -27,14 +28,27 @@ export class OcGoMcpClient {
    * This can be used for non-vision models to add image processing capabilities
    * @param imageData Base64-encoded image (data URL format)
    * @param prompt What to analyze in the image
+   * @param visionProxyModel Optional configured vision model to use
    * @returns Image analysis result
    */
-  async analyzeImage(imageData: string, prompt: string, proxyModelId: string = DEFAULT_VISION_PROXY_MODEL): Promise<string> {
+  async analyzeImage(
+    imageData: string,
+    prompt: string,
+    visionProxyModel?: string
+  ): Promise<string> {
     if (!(await this.ensureApiKey())) {
       throw new Error("OpenCode Go API key not found");
     }
 
-    debugLog("OCR-CALL", { model: proxyModelId, imageDataLength: imageData.length, promptLength: prompt.length });
+    const model = getVisionProxyModelId(visionProxyModel);
+
+    // Log image metadata for tracking (never log user prompts)
+    const imageSizeBytes = Math.ceil((imageData.length * 3) / 4);
+    debugLog("VISION-PROXY-CALL", {
+      model,
+      imageSizeKB: Math.round(imageSizeBytes / 1024),
+      promptLength: prompt.length,
+    });
 
     // Call Vision model via chat completions endpoint
     const response = await fetch(
@@ -46,7 +60,7 @@ export class OcGoMcpClient {
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
-          model: proxyModelId,
+          model,
           messages: [
             {
               role: "user",

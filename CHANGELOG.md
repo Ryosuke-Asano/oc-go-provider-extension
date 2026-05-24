@@ -11,11 +11,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Thinking/Reasoning picker** for supported models via VS Code `configurationSchema` API
+  - DeepSeek V4 Flash/Pro: `High` / `Max` / `None` (verified: `none → 0 reasoning chars`)
+  - MiMo-V2/V2.5: `On` / `Off` (verified: `off → 0 reasoning chars`)
+  - Qwen3.5/3.6 Plus: `On` / `Off` (verified: `off → 0 reasoning chars`)
+- Stable VS Code fallback: suffixed model variants when `configurationSchema` unavailable
+- `src/thinking.ts` — per-family config module (DeepSeek `reasoning_effort`, MiMo/Qwen `chat_template_kwargs`)
+- Per-image OCR deduplication — skip re-OCR when VS Code re-attaches same image; re-OCR on deliberate re-paste
+- Diagnostic logging (`PRE-REQUEST`, `STREAM-DONE`, `OCR-NEWEST-IMAGE`, `OCR-SKIPPED`, `OCR-MIMO-CALL`)
 - Enhanced image analysis tool with vision model support and logging
 
 ### Changed
 
+- **OCR-only image strategy** for non-vision models — preserves original model's context window size
+- OCR token budget increased from 2K → 16K tokens for detailed multi-paragraph image descriptions
+- Removed vision fallback model switching — no more silent MiMo-Omni substitution for DeepSeek requests
+- Added `supportsReasoning` field to model configuration
+- Enabled `chatProvider` proposed API in package.json
+- Anthropic endpoint now supports thinking parameter injection
 - Improved code formatting and readability in package.json, provider.ts, and utils.ts
+
+### Removed
+
+- Kimi and GLM thinking toggles — upstream APIs ignore `{type:"disabled"}` (verified via E2E probe)
+- `getVisionFallbackModelId()` dead code
+- 429 fallback retry logic (never triggered after OCR-only strategy)
+
+### Fixed
+
+- `messages[42]: unknown variant image_url, expected text` — DeepSeek crash when old images left raw in history
+- ESLint unsafe assignment in reasoning content extraction (utils.ts)
+- Image re-OCR spam: VS Code auto-attached images now skipped per-hash + per-index
 
 ## [0.6.1] - 2026-05-08
 

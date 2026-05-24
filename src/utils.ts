@@ -10,11 +10,6 @@ import type {
   AnthropicTool,
 } from "./types";
 
-// Check if LanguageModelThinkingPart is available (VS Code 1.120+)
-const hasThinkingPart =
-  typeof (vscode as unknown as Record<string, unknown>)
-    .LanguageModelThinkingPart === "function";
-
 /**
  * Legacy part shape used by mocks or older API shapes
  */
@@ -48,6 +43,54 @@ export function getTextPartValue(
     }
   }
   return undefined;
+}
+
+/**
+ * Helper: extract reasoning text from a LanguageModelThinkingPart or compatible object.
+ */
+export function getThinkingPartValue(
+  part: vscode.LanguageModelInputPart | LegacyPart
+): string | undefined {
+  const ThinkingPartCtor = (
+    vscode as unknown as {
+      LanguageModelThinkingPart?: new (value: string) => unknown;
+    }
+  ).LanguageModelThinkingPart;
+
+  if (
+    typeof part === "object" &&
+    part !== null &&
+    ThinkingPartCtor &&
+    part instanceof ThinkingPartCtor
+  ) {
+    return (part as { value?: string }).value;
+  }
+
+  if (typeof part === "object" && part !== null) {
+    const p = part as { type?: string; value?: unknown };
+    if (p.type === "thinking" && typeof p.value === "string") {
+      return p.value;
+    }
+  }
+  return undefined;
+}
+
+const DEFAULT_VISION_PROXY_MODEL = "mimo-v2-omni";
+
+/**
+ * Resolve the configured image-analysis proxy model.
+ *
+ * This is the model used to analyze images for non-vision requests and by the
+ * shared image-analysis tool. The default preserves the current behavior.
+ */
+export function getVisionProxyModelId(
+  defaultModel = DEFAULT_VISION_PROXY_MODEL
+): string {
+  const configured = vscode.workspace
+    .getConfiguration("opencode")
+    .get<string>("visionProxyModel", defaultModel);
+  const trimmed = typeof configured === "string" ? configured.trim() : "";
+  return trimmed || defaultModel;
 }
 
 function toUint8Array(
@@ -320,9 +363,15 @@ export function convertMessages(
           ? "assistant"
           : "system";
 
+    let reasoningContent = "";
+
     // Collect text parts
     const textParts: string[] = [];
     for (const part of msg.content) {
+      const thinkingValue = getThinkingPartValue(part);
+      if (thinkingValue !== undefined) {
+        continue;
+      }
       const tv = getTextPartValue(part);
       if (tv !== undefined) {
         textParts.push(tv);
@@ -348,21 +397,14 @@ export function convertMessages(
       }
     }
 
-    // Extract reasoning from LanguageModelThinkingPart (VS Code 1.120+) or DataPart
-    let reasoningContent = "";
+    // Extract reasoning content from custom data parts (preserved from previous turns)
     for (const part of msg.content) {
+      const thinkingValue = getThinkingPartValue(part);
+      if (thinkingValue !== undefined) {
+        reasoningContent += thinkingValue;
+        continue;
+      }
       if (typeof part === "object" && part !== null) {
-        // VS Code 1.120+ ThinkingPart
-        if (
-          hasThinkingPart &&
-          "value" in part &&
-          (part as { constructor?: { name?: string } }).constructor?.name ===
-            "LanguageModelThinkingPart"
-        ) {
-          reasoningContent = String((part as { value: string }).value);
-          continue;
-        }
-        // Fallback: custom data part with reasoning mime type
         const p = part as { mimeType?: string; data?: Uint8Array };
         if (
           p.mimeType === "application/vnd.opencode-go.reasoning+json" &&
@@ -370,13 +412,8 @@ export function convertMessages(
         ) {
           try {
             const json: unknown = JSON.parse(new TextDecoder().decode(p.data));
-            if (
-              typeof json === "object" &&
-              json !== null &&
-              "content" in json &&
-              typeof (json as { content: unknown }).content === "string"
-            ) {
-              reasoningContent = (json as { content: string }).content;
+            if (typeof json === "object" && json !== null && typeof (json as Record<string, unknown>).content === "string") {
+              reasoningContent += (json as { content: string }).content;
             }
           } catch {
             // Ignore malformed reasoning data parts
@@ -847,8 +884,23 @@ export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 2);
 }
 
-const MIN_IMAGE_TOKENS = 1500;
-const MAX_IMAGE_TOKENS = 1500;
+/**
+ * Estimate tokens for JSON-like content (transcripts) with overhead factor.
+ * JSON adds ~2x overhead due to quotes, braces, escape sequences.
+ * Using 4.5 as conservative factor for typical JSONL transcript content.
+ */
+export function estimateTokensWithOverhead(
+  text: string,
+  overheadFactor = 4.5
+): number {
+  if (!text || text.length === 0) {
+    return 0;
+  }
+  return Math.ceil(text.length / overheadFactor);
+}
+
+const MIN_IMAGE_TOKENS = 1000;
+const MAX_IMAGE_TOKENS = 6000;
 
 /**
  * Estimate message array tokens

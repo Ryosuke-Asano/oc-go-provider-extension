@@ -365,7 +365,7 @@ describe("OC_GO_MODELS", () => {
     expect(model).toBeDefined();
     expect(model?.name).toBe("GLM-5");
     expect(model?.supportsTools).toBe(true);
-    expect(model?.supportsVision).toBe(false);
+    expect(model?.supportsVision).toBe(true);
     expect(model?.contextWindow).toBe(202752);
     expect(model?.maxOutput).toBe(131072);
   });
@@ -401,7 +401,7 @@ describe("OC_GO_MODELS", () => {
     const model = OC_GO_MODELS.find((m) => m.id === "minimax-m2.5");
     expect(model).toBeDefined();
     expect(model?.name).toBe("MiniMax M2.5");
-    expect(model?.supportsVision).toBe(false);
+    expect(model?.supportsVision).toBe(true);
     expect(model?.apiFormat).toBe("anthropic");
     expect(model?.contextWindow).toBe(196608);
     expect(model?.maxOutput).toBe(131072);
@@ -411,7 +411,7 @@ describe("OC_GO_MODELS", () => {
     const model = OC_GO_MODELS.find((m) => m.id === "minimax-m2.7");
     expect(model).toBeDefined();
     expect(model?.name).toBe("MiniMax M2.7");
-    expect(model?.supportsVision).toBe(false);
+    expect(model?.supportsVision).toBe(true);
     expect(model?.apiFormat).toBe("anthropic");
     expect(model?.contextWindow).toBe(196608);
     expect(model?.maxOutput).toBe(131072);

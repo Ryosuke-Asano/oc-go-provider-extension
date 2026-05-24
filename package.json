@@ -1,8 +1,8 @@
 {
   "name": "opencode-go-vscode-chat",
-  "displayName": "OpenCode Go Chat Provider for VS Code",
-  "description": "Integrates OpenCode Go models (GLM-5/5.1, Kimi K2.5/K2.6, MiMo-V2/V2.5, MiniMax M2.5/M2.7, Qwen3.5/3.6 Plus, DeepSeek V4 Flash/Pro) into VS Code Copilot Chat with tool calling and vision",
-  "version": "0.7.0",
+  "displayName": "OpenCode Go & Zen Chat Provider for VS Code",
+  "description": "Integrates OpenCode Go (subscription) and OpenCode Zen (free/pay-as-you-go) models into VS Code Copilot Chat. Go supports popular open-weight models with thinking/reasoning levels. Zen includes free models and pay-as-you-go access to Claude, GPT-5, and more. Both support tool calling, vision, and dynamic model discovery.",
+  "version": "0.7.1",
   "publisher": "Ryosuke-Asano",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -23,6 +23,7 @@
     "copilot",
     "opencode",
     "opencode-go",
+    "opencode-zen",
     "glm",
     "kimi",
     "mimo",
@@ -34,16 +35,21 @@
   "activationEvents": [
     "onStartupFinished"
   ],
-  "main": "./out/extension.js",
   "enabledApiProposals": [
     "chatProvider"
   ],
+  "main": "./out/extension.js",
   "contributes": {
     "languageModelChatProviders": [
       {
         "vendor": "opencode-go",
         "displayName": "OpenCode Go",
         "managementCommand": "opencode-go.manage"
+      },
+      {
+        "vendor": "opencode-zen",
+        "displayName": "OpenCode Zen",
+        "managementCommand": "opencode-zen.manage"
       }
     ],
     "languageModelTools": [
@@ -61,24 +67,19 @@
         "category": "OpenCode Go"
       },
       {
-        "command": "opencode-go.selectVisionProxy",
-        "title": "Select Vision Proxy Model",
-        "category": "OpenCode Go"
+        "command": "opencode-zen.manage",
+        "title": "Manage OpenCode Zen Provider",
+        "category": "OpenCode Zen"
       }
     ],
     "configuration": {
-      "title": "OpenCode Go",
+      "title": "OpenCode",
       "properties": {
-        "opencodego.visionProxyModel": {
+        "opencode.visionProxyModel": {
           "type": "string",
           "default": "mimo-v2-omni",
-          "enum": [
-            "mimo-v2-omni",
-            "mimo-v2.5",
-            "kimi-k2.6",
-            "qwen3.6-plus"
-          ],
-          "description": "Vision model used as OCR proxy for non-vision models"
+          "markdownDescription": "OpenCode Go vision-capable model used to analyze images for non-vision chat requests and the shared image analysis tool. The default preserves the current behavior. Set this to another supported OpenCode Go vision model if you want a different proxy.",
+          "scope": "resource"
         }
       }
     }
