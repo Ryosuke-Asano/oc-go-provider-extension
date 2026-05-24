@@ -3,7 +3,7 @@ import { OcGoMcpClient } from "./mcp";
 import { DEFAULT_VISION_PROXY_MODEL } from "./types";
 
 /**
- * Tool for analyzing images using OpenCode Go Vision model.
+ * Tool for analyzing images using the configured OpenCode Go vision proxy.
  * Useful for non-vision models to process image content.
  */
 export class OcGoAnalyzeImageTool implements vscode.LanguageModelTool<{
@@ -14,7 +14,7 @@ export class OcGoAnalyzeImageTool implements vscode.LanguageModelTool<{
 
   readonly name = OcGoAnalyzeImageTool.id;
   readonly description =
-    "Analyze an image using OpenCode Go Vision model. Use this tool when you need to understand or describe the content of an image, extract text from images (OCR), or answer questions about visual content. Returns a detailed analysis of the image.";
+    "Analyze an image using the configured OpenCode Go vision proxy model. Use this tool when you need to understand or describe the content of an image, extract text from images (OCR), or answer questions about visual content. Returns a detailed analysis of the image.";
   readonly tags = ["vision", "image", "ocr", "analysis"];
 
   readonly inputSchema = {
@@ -73,7 +73,7 @@ export class OcGoAnalyzeImageTool implements vscode.LanguageModelTool<{
     _token: vscode.CancellationToken
   ): vscode.ProviderResult<vscode.PreparedToolInvocation> {
     return {
-      invocationMessage: "Analyzing image with OpenCode Go Vision...",
+      invocationMessage: "Analyzing image with OpenCode vision proxy...",
     };
   }
 }

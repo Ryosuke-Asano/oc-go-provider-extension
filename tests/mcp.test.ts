@@ -3,6 +3,7 @@
  * Unit tests for MCP client in mcp.ts
  */
 
+import * as vscode from "vscode";
 import { OcGoMcpClient } from "../src/mcp";
 import { secrets } from "../__mocks__/vscode";
 
@@ -138,6 +139,40 @@ describe("OcGoMcpClient", () => {
         (c: { type?: string }) => c.type === "text"
       );
       expect(promptContent?.text).toBe(prompt);
+    });
+
+    it("should use the configured vision proxy model when set", async () => {
+      (vscode.workspace.getConfiguration as jest.Mock).mockReturnValue({
+        get: jest.fn((key: string, defaultValue: unknown) =>
+          key === "visionProxyModel" ? "qwen3.6-plus" : defaultValue
+        ),
+      });
+
+      const mockResponse = {
+        choices: [
+          {
+            message: { content: "Description" },
+          },
+        ],
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      const internal = client as {
+        analyzeImage(
+          imageData: string,
+          prompt: string,
+          visionProxyModel?: string
+        ): Promise<string>;
+      };
+      await internal.analyzeImage("data:image/png;base64,...", "Describe");
+
+      const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
+      const body = JSON.parse(fetchCall[1].body);
+      expect(body.model).toBe("qwen3.6-plus");
     });
   });
 });

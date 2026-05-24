@@ -20604,6 +20604,11 @@ declare module 'vscode' {
 		readonly detail?: string;
 
 		/**
+		 * Whether the user can select this model directly in the picker.
+		 */
+		readonly isUserSelectable?: boolean;
+
+		/**
 		 * Opaque version string of the model.
 		 * This is used as a lookup value in {@linkcode LanguageModelChatSelector.version}
 		 * An example is how GPT 4o has multiple versions like 2024-11-20 and 2024-08-06
@@ -20667,12 +20672,12 @@ declare module 'vscode' {
 	/**
 	 * The various message types which a {@linkcode LanguageModelChatProvider} can emit in the chat response stream
 	 */
-	export type LanguageModelResponsePart = LanguageModelTextPart | LanguageModelToolResultPart | LanguageModelToolCallPart | LanguageModelDataPart;
+	export type LanguageModelResponsePart = LanguageModelTextPart | LanguageModelToolResultPart | LanguageModelToolCallPart | LanguageModelDataPart | LanguageModelThinkingPart;
 
 	/**
 	 * The various message types which can be sent via {@linkcode LanguageModelChat.sendRequest } and processed by a {@linkcode LanguageModelChatProvider}
 	 */
-	export type LanguageModelInputPart = LanguageModelTextPart | LanguageModelToolResultPart | LanguageModelToolCallPart | LanguageModelDataPart;
+	export type LanguageModelInputPart = LanguageModelTextPart | LanguageModelToolResultPart | LanguageModelToolCallPart | LanguageModelDataPart | LanguageModelThinkingPart;
 
 	/**
 	 * A LanguageModelChatProvider implements access to language models, which users can then use through the chat view, or through extension API by acquiring a LanguageModelChat.
@@ -21057,6 +21062,21 @@ declare module 'vscode' {
 		 * @param mimeType The mime type of the data.
 		 */
 		constructor(data: Uint8Array, mimeType: string);
+	}
+
+	/**
+	 * A language model response part that carries intermediate reasoning/thinking text.
+	 */
+	export class LanguageModelThinkingPart {
+		/**
+		 * The reasoning text.
+		 */
+		value: string;
+
+		/**
+		 * Construct a thinking part with the given reasoning text.
+		 */
+		constructor(value: string);
 	}
 
 	/**

@@ -232,8 +232,8 @@ describe("estimateMessagesTokens", () => {
       [new vscode.LanguageModelTextPart("Describe this"), mockImagePart]
     );
     const tokens = estimateMessagesTokens(toEstimatableMessages([message]));
-    // 16 chars for text + 1500 for image = 1516
-    expect(tokens).toBeGreaterThanOrEqual(1500);
+    // 16 chars for text + MIN_IMAGE_TOKENS (1000) for image ≈ 1008
+    expect(tokens).toBeGreaterThanOrEqual(1000);
   });
 
   it("should estimate tokens for text data parts", () => {
@@ -303,9 +303,9 @@ describe("estimateMessagesTokens", () => {
     ];
     const tokens = estimateMessagesTokens(toEstimatableMessages(messages));
     // Text: 13 + 8 + 10 = 31 chars
-    // Images: 2 * 1500 = 3000
-    // Total: 3031 / 4 ≈ 758
-    expect(tokens).toBeGreaterThan(3000);
+    // Images: 2 * MIN_IMAGE_TOKENS (1000) = 2000
+    // Total: 2031 / 2 ≈ 1016
+    expect(tokens).toBeGreaterThan(2000);
   });
 });
 
@@ -465,6 +465,21 @@ describe("convertMessages", () => {
     expect(result[0].role).toBe("assistant");
     expect(result[0].reasoning_content).toBe("Let me think...");
     expect(result[0].tool_calls?.length).toBe(1);
+  });
+
+  it("should extract reasoning_content from LanguageModelThinkingPart", () => {
+    const assistant = new vscode.LanguageModelChatMessage(
+      vscode.LanguageModelChatMessageRole.Assistant,
+      [
+        new vscode.LanguageModelThinkingPart("Step 1: reason about the task."),
+        new vscode.LanguageModelTextPart("Here is the answer."),
+      ]
+    );
+
+    const result = convertMessages([assistant]);
+    expect(result[0].role).toBe("assistant");
+    expect(result[0].content).toBe("Here is the answer.");
+    expect(result[0].reasoning_content).toBe("Step 1: reason about the task.");
   });
 
   it("should include reasoning_content in fallback empty assistant messages", () => {
