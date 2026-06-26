@@ -282,22 +282,23 @@ export type AnthropicSSEEvent =
  * Available OpenCode Go models configuration
  *
  * Models using the OpenAI-compatible endpoint (chat/completions):
- *   GLM-5, GLM-5.1, Kimi K2.5, Kimi K2.6, MiMo-V2-Pro, MiMo-V2-Omni
+ *   GLM-5.2, GLM-5.1, Kimi K2.7 Code, Kimi K2.6, MiMo-V2.5-Pro, MiMo-V2.5,
+ *   DeepSeek V4 Pro, DeepSeek V4 Flash
  *
  * Models using the Anthropic-compatible endpoint (messages):
- *   MiniMax M2.5, MiniMax M2.7
+ *   MiniMax M3, MiniMax M2.7, Qwen3.7 Max, Qwen3.7 Plus, Qwen3.6 Plus
  */
 export const OC_GO_MODELS: OcGoModelInfo[] = [
   {
-    id: "glm-5",
-    name: "GLM-5",
-    displayName: "GLM-5",
-    contextWindow: 202752,
+    id: "glm-5.2",
+    name: "GLM-5.2",
+    displayName: "GLM-5.2",
+    contextWindow: 1048576,
     maxOutput: 131072,
     supportsTools: true,
     supportsVision: false,
     apiFormat: "openai",
-    thinkingMode: "none",
+    thinkingMode: "switchable",
   },
   {
     id: "glm-5.1",
@@ -311,13 +312,13 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     thinkingMode: "none",
   },
   {
-    id: "kimi-k2.5",
-    name: "Kimi K2.5",
-    displayName: "Kimi K2.5",
+    id: "kimi-k2.7-code",
+    name: "Kimi K2.7 Code",
+    displayName: "Kimi K2.7 Code",
     contextWindow: 262144,
-    maxOutput: 65536,
+    maxOutput: 16384,
     supportsTools: true,
-    supportsVision: true,
+    supportsVision: false,
     apiFormat: "openai",
     fixedTemperature: 1,
     thinkingMode: "always",
@@ -333,28 +334,6 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     apiFormat: "openai",
     fixedTemperature: 1,
     thinkingMode: "always",
-  },
-  {
-    id: "mimo-v2-pro",
-    name: "MiMo-V2-Pro",
-    displayName: "MiMo-V2-Pro",
-    contextWindow: 1048576,
-    maxOutput: 131072,
-    supportsTools: true,
-    supportsVision: false,
-    apiFormat: "openai",
-    thinkingMode: "switchable",
-  },
-  {
-    id: "mimo-v2-omni",
-    name: "MiMo-V2-Omni",
-    displayName: "MiMo-V2-Omni",
-    contextWindow: 262144,
-    maxOutput: 65536,
-    supportsTools: true,
-    supportsVision: true,
-    apiFormat: "openai",
-    thinkingMode: "switchable",
   },
   {
     id: "mimo-v2.5-pro",
@@ -379,11 +358,11 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     thinkingMode: "switchable",
   },
   {
-    id: "minimax-m2.5",
-    name: "MiniMax M2.5",
-    displayName: "MiniMax M2.5",
-    contextWindow: 196608,
-    maxOutput: 131072,
+    id: "minimax-m3",
+    name: "MiniMax M3",
+    displayName: "MiniMax M3",
+    contextWindow: 1048576,
+    maxOutput: 512000,
     supportsTools: true,
     supportsVision: false,
     apiFormat: "anthropic",
@@ -401,15 +380,26 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     thinkingMode: "none",
   },
   {
-    id: "qwen3.5-plus",
-    name: "Qwen3.5 Plus",
-    displayName: "Qwen3.5 Plus",
-    contextWindow: 1000000,
+    id: "qwen3.7-max",
+    name: "Qwen3.7 Max",
+    displayName: "Qwen3.7 Max",
+    contextWindow: 1048576,
+    maxOutput: 65536,
+    supportsTools: true,
+    supportsVision: false,
+    apiFormat: "anthropic",
+    thinkingMode: "none",
+  },
+  {
+    id: "qwen3.7-plus",
+    name: "Qwen3.7 Plus",
+    displayName: "Qwen3.7 Plus",
+    contextWindow: 1048576,
     maxOutput: 65536,
     supportsTools: true,
     supportsVision: true,
-    apiFormat: "openai",
-    thinkingMode: "switchable",
+    apiFormat: "anthropic",
+    thinkingMode: "none",
   },
   {
     id: "qwen3.6-plus",
@@ -419,6 +409,17 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     maxOutput: 65536,
     supportsTools: true,
     supportsVision: true,
+    apiFormat: "anthropic",
+    thinkingMode: "none",
+  },
+  {
+    id: "deepseek-v4-pro",
+    name: "DeepSeek V4 Pro",
+    displayName: "DeepSeek V4 Pro",
+    contextWindow: 1000000,
+    maxOutput: 393216,
+    supportsTools: true,
+    supportsVision: false,
     apiFormat: "openai",
     thinkingMode: "switchable",
   },
@@ -433,18 +434,7 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     apiFormat: "openai",
     thinkingMode: "switchable",
   },
-  {
-    id: "deepseek-v4-pro",
-    name: "DeepSeek V4 Pro",
-    displayName: "DeepSeek V4 Pro",
-    contextWindow: 1000000,
-    maxOutput: 393216,
-    supportsTools: true,
-    supportsVision: false,
-    apiFormat: "openai",
-    thinkingMode: "switchable",
-  },
 ];
 
 /** Default model used for OCR/vision proxy when non-vision models receive images */
-export const DEFAULT_VISION_PROXY_MODEL = "mimo-v2-omni";
+export const DEFAULT_VISION_PROXY_MODEL = "mimo-v2.5";

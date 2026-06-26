@@ -360,22 +360,38 @@ describe("OC_GO_MODELS", () => {
     expect(OC_GO_MODELS.length).toBeGreaterThan(0);
   });
 
-  it("should have GLM-5 model", () => {
-    const model = OC_GO_MODELS.find((m) => m.id === "glm-5");
+  it("should have GLM-5.1 model", () => {
+    const model = OC_GO_MODELS.find((m) => m.id === "glm-5.1");
     expect(model).toBeDefined();
-    expect(model?.name).toBe("GLM-5");
+    expect(model?.name).toBe("GLM-5.1");
     expect(model?.supportsTools).toBe(true);
     expect(model?.supportsVision).toBe(false);
     expect(model?.contextWindow).toBe(202752);
     expect(model?.maxOutput).toBe(131072);
   });
 
-  it("should have Kimi K2.5 model", () => {
-    const model = OC_GO_MODELS.find((m) => m.id === "kimi-k2.5");
+  it("should have GLM-5.2 model with reasoning support", () => {
+    const model = OC_GO_MODELS.find((m) => m.id === "glm-5.2");
     expect(model).toBeDefined();
-    expect(model?.name).toBe("Kimi K2.5");
+    expect(model?.name).toBe("GLM-5.2");
+    expect(model?.contextWindow).toBe(1048576);
+    expect(model?.maxOutput).toBe(131072);
+    expect(model?.supportsTools).toBe(true);
+    expect(model?.supportsVision).toBe(false);
+    expect(model?.apiFormat).toBe("openai");
+    expect(model?.thinkingMode).toBe("switchable");
+  });
+
+  it("should have Kimi K2.7 Code model", () => {
+    const model = OC_GO_MODELS.find((m) => m.id === "kimi-k2.7-code");
+    expect(model).toBeDefined();
+    expect(model?.name).toBe("Kimi K2.7 Code");
     expect(model?.contextWindow).toBe(262144);
-    expect(model?.maxOutput).toBe(65536);
+    expect(model?.maxOutput).toBe(16384);
+    expect(model?.supportsVision).toBe(false);
+    expect(model?.apiFormat).toBe("openai");
+    expect(model?.fixedTemperature).toBe(1);
+    expect(model?.thinkingMode).toBe("always");
   });
 
   it("should have Kimi K2.6 model", () => {
@@ -388,23 +404,23 @@ describe("OC_GO_MODELS", () => {
     expect(model?.fixedTemperature).toBe(1);
   });
 
-  it("should have MiMo-V2-Omni vision model", () => {
-    const model = OC_GO_MODELS.find((m) => m.id === "mimo-v2-omni");
+  it("should have MiMo-V2.5 vision model", () => {
+    const model = OC_GO_MODELS.find((m) => m.id === "mimo-v2.5");
     expect(model).toBeDefined();
-    expect(model?.name).toBe("MiMo-V2-Omni");
+    expect(model?.name).toBe("MiMo-V2.5");
     expect(model?.supportsVision).toBe(true);
     expect(model?.contextWindow).toBe(262144);
     expect(model?.maxOutput).toBe(65536);
   });
 
-  it("should have MiniMax M2.5 model with Anthropic API format", () => {
-    const model = OC_GO_MODELS.find((m) => m.id === "minimax-m2.5");
+  it("should have MiniMax M3 model with Anthropic API format", () => {
+    const model = OC_GO_MODELS.find((m) => m.id === "minimax-m3");
     expect(model).toBeDefined();
-    expect(model?.name).toBe("MiniMax M2.5");
+    expect(model?.name).toBe("MiniMax M3");
     expect(model?.supportsVision).toBe(false);
     expect(model?.apiFormat).toBe("anthropic");
-    expect(model?.contextWindow).toBe(196608);
-    expect(model?.maxOutput).toBe(131072);
+    expect(model?.contextWindow).toBe(1048576);
+    expect(model?.maxOutput).toBe(512000);
   });
 
   it("should have MiniMax M2.7 model with Anthropic API format", () => {
@@ -417,29 +433,56 @@ describe("OC_GO_MODELS", () => {
     expect(model?.maxOutput).toBe(131072);
   });
 
-  it("should have Qwen3.5 Plus model with OpenAI API format", () => {
-    const model = OC_GO_MODELS.find((m) => m.id === "qwen3.5-plus");
+  it("should have Qwen3.7 Max model with Anthropic API format", () => {
+    const model = OC_GO_MODELS.find((m) => m.id === "qwen3.7-max");
     expect(model).toBeDefined();
-    expect(model?.name).toBe("Qwen3.5 Plus");
-    expect(model?.supportsVision).toBe(true);
-    expect(model?.apiFormat).toBe("openai");
-    expect(model?.contextWindow).toBe(1000000);
+    expect(model?.name).toBe("Qwen3.7 Max");
+    expect(model?.supportsVision).toBe(false);
+    expect(model?.apiFormat).toBe("anthropic");
+    expect(model?.contextWindow).toBe(1048576);
     expect(model?.maxOutput).toBe(65536);
   });
 
-  it("should have Qwen3.6 Plus model with OpenAI API format", () => {
+  it("should have Qwen3.7 Plus model with Anthropic API format", () => {
+    const model = OC_GO_MODELS.find((m) => m.id === "qwen3.7-plus");
+    expect(model).toBeDefined();
+    expect(model?.name).toBe("Qwen3.7 Plus");
+    expect(model?.supportsVision).toBe(true);
+    expect(model?.apiFormat).toBe("anthropic");
+    expect(model?.contextWindow).toBe(1048576);
+    expect(model?.maxOutput).toBe(65536);
+  });
+
+  it("should have Qwen3.6 Plus model with Anthropic API format", () => {
     const model = OC_GO_MODELS.find((m) => m.id === "qwen3.6-plus");
     expect(model).toBeDefined();
     expect(model?.name).toBe("Qwen3.6 Plus");
     expect(model?.supportsVision).toBe(true);
-    expect(model?.apiFormat).toBe("openai");
+    expect(model?.apiFormat).toBe("anthropic");
     expect(model?.contextWindow).toBe(1000000);
     expect(model?.maxOutput).toBe(65536);
   });
 
-  it("should have OpenAI format for non-MiniMax models", () => {
+  it("should have Anthropic API format for MiniMax and Qwen models", () => {
+    const anthropicIds = OC_GO_MODELS.filter(
+      (m) => m.apiFormat === "anthropic"
+    )
+      .map((m) => m.id)
+      .sort();
+    expect(anthropicIds).toEqual(
+      [
+        "minimax-m2.7",
+        "minimax-m3",
+        "qwen3.6-plus",
+        "qwen3.7-max",
+        "qwen3.7-plus",
+      ].sort()
+    );
+  });
+
+  it("should have OpenAI API format for all other models", () => {
     const openaiModels = OC_GO_MODELS.filter(
-      (m) => m.id !== "minimax-m2.5" && m.id !== "minimax-m2.7"
+      (m) => m.apiFormat !== "anthropic"
     );
     openaiModels.forEach((model) => {
       expect(model.apiFormat).toBe("openai");

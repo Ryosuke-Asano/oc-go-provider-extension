@@ -5,7 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.8.0] - 2026-06-25
+
+### Added
+
+- **GLM-5.2** model (`glm-5.2`) — 1M context, 131K max output, reasoning support via `reasoning_effort`/`thinking` parameters
+- **Kimi K2.7 Code** model (`kimi-k2.7-code`) — 262K context, 16K max output, tool calling support
+- **MiniMax M3** model (`minimax-m3`) — 1M context, 512K max output, tool calling support (Anthropic endpoint)
+- **Qwen3.7 Max** model (`qwen3.7-max`) — 1M context, 65K max output, tool calling support (Anthropic endpoint)
+- **Qwen3.7 Plus** model (`qwen3.7-plus`) — 1M context, 65K max output, vision & tool calling support (Anthropic endpoint)
+
+### Changed
+
+- Aligned model roster with the current OpenCode Go subscription:
+  - Removed models no longer offered: `glm-5`, `kimi-k2.5`, `mimo-v2-pro`, `mimo-v2-omni`, `minimax-m2.5`, `qwen3.5-plus`
+  - `qwen3.6-plus` now uses the Anthropic-compatible `/messages` endpoint (corrected from OpenAI format)
+  - All Qwen models now route through the Anthropic endpoint; thinking mode set to none (previous `chat_template_kwargs` thinking params apply only to the OpenAI endpoint)
+- Switched default vision proxy model from `mimo-v2-omni` to `mimo-v2.5`; updated the configurable vision proxy enum to current vision-capable models (MiMo-V2.5, Kimi K2.6, Qwen3.7 Plus, Qwen3.6 Plus)
 
 ## [0.7.0] - 2026-05-19
 
