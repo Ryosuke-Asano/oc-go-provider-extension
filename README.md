@@ -8,19 +8,20 @@ Integrates [OpenCode Go](https://opencode.ai/docs/ja/go) models into VS Code Cop
 ## Features
 
 - **Multiple Model Support**
-  - **GLM-5**: 202K context window, up to 131K output tokens
+  - **GLM-5.2**: 1,048K context window, up to 131K output tokens, reasoning support
   - **GLM-5.1**: 202K context window, up to 131K output tokens
-  - **Kimi K2.5**: 262K context window, up to 65K output tokens, vision support
-  - **MiMo-V2-Pro**: 1,048K context window, up to 131K output tokens
-  - **MiMo-V2-Omni**: 262K context window, up to 65K output tokens, vision support
-  - **MiniMax M2.5**: 196K context window, up to 131K output tokens
+  - **Kimi K2.7 Code**: 262K context window, up to 16K output tokens
+  - **Kimi K2.6**: 262K context window, up to 262K output tokens, vision support
+  - **MiMo-V2.5-Pro**: 1,048K context window, up to 131K output tokens
+  - **MiMo-V2.5**: 262K context window, up to 65K output tokens, vision support
+  - **MiniMax M3**: 1,048K context window, up to 512K output tokens
   - **MiniMax M2.7**: 196K context window, up to 131K output tokens
+  - **Qwen3.7 Max / Plus / Qwen3.6 Plus**: 1M context window, up to 65K output tokens, vision support (Plus tiers)
 
 - **Advanced Capabilities**
   - Tool calling support for VS Code chat participants
   - Streaming responses via Server-Sent Events (SSE)
-  - Vision support via Kimi K2.5 and MiMo-V2-Omni
-  - Automatic image-to-text conversion for non-vision models
+  - Vision support via Kimi K2.6, MiMo-V2.5, Qwen3.7 Plus and Qwen3.6 Plus
 
 - **Secure API Key Management**
   - Stored securely in VS Code SecretStorage
@@ -76,27 +77,33 @@ Once configured, select OpenCode Go as your chat provider in VS Code Copilot Cha
 
 - Open the Chat view (`Cmd/Ctrl + Alt + I`)
 - Click the provider selector
-- Choose an OpenCode Go model (GLM-5, GLM-5.1, Kimi K2.5, MiMo-V2-Pro, MiMo-V2-Omni, MiniMax M2.5, or MiniMax M2.7)
+- Choose an OpenCode Go model (GLM-5.2, GLM-5.1, Kimi K2.7 Code, Kimi K2.6, MiMo-V2.5-Pro, MiMo-V2.5, MiniMax M3, MiniMax M2.7, Qwen3.7 Max, Qwen3.7 Plus, Qwen3.6 Plus, DeepSeek V4 Pro or DeepSeek V4 Flash)
 
 ## Supported Models
 
 Token limits below are the values currently used by this extension and may change if OpenCode Go updates model limits.
 
-| Model        | Context Window | Max Output | Vision | Tools |
-| ------------ | -------------- | ---------- | ------ | ----- |
-| GLM-5        | 202,752        | 131,072    | No     | Yes   |
-| GLM-5.1      | 202,752        | 131,072    | No     | Yes   |
-| Kimi K2.5    | 262,144        | 65,536     | Yes    | Yes   |
-| MiMo-V2-Pro  | 1,048,576      | 131,072    | No     | Yes   |
-| MiMo-V2-Omni | 262,144        | 65,536     | Yes    | Yes   |
-| MiniMax M2.5 | 196,608        | 131,072    | No     | Yes   |
-| MiniMax M2.7 | 196,608        | 131,072    | No     | Yes   |
+| Model             | Context Window | Max Output | Vision | Tools |
+| ----------------- | -------------- | ---------- | ------ | ----- |
+| GLM-5.2            | 1,048,576      | 131,072    | No     | Yes   |
+| GLM-5.1            | 202,752        | 131,072    | No     | Yes   |
+| Kimi K2.7 Code     | 262,144        | 16,384     | No     | Yes   |
+| Kimi K2.6          | 262,144        | 262,144    | Yes    | Yes   |
+| MiMo-V2.5-Pro      | 1,048,576      | 131,072    | No     | Yes   |
+| MiMo-V2.5          | 262,144        | 65,536     | Yes    | Yes   |
+| MiniMax M3         | 1,048,576      | 512,000    | No     | Yes   |
+| MiniMax M2.7       | 196,608        | 131,072    | No     | Yes   |
+| Qwen3.7 Max        | 1,048,576      | 65,536     | No     | Yes   |
+| Qwen3.7 Plus       | 1,048,576      | 65,536     | Yes    | Yes   |
+| Qwen3.6 Plus       | 1,000,000      | 65,536     | Yes    | Yes   |
+| DeepSeek V4 Pro    | 1,000,000      | 393,216    | No     | Yes   |
+| DeepSeek V4 Flash  | 1,000,000      | 393,216    | No     | Yes   |
 
 ## MCP Integration
 
 This extension integrates with OpenCode Go's MCP (Model Context Protocol) server:
 
-- **Vision MCP**: Image analysis using MiMo-V2-Omni
+- **Vision MCP**: Image analysis using MiMo-V2.5
 
 ## Development
 
@@ -151,11 +158,11 @@ If you see authentication errors:
 
 ### Vision Not Working
 
-For non-vision models (GLM-5, GLM-5.1, MiMo-V2-Pro, MiniMax M2.5, MiniMax M2.7):
+For non-vision models (GLM-5.2, GLM-5.1, Kimi K2.7 Code, MiMo-V2.5-Pro, MiniMax M3, MiniMax M2.7, Qwen3.7 Max, DeepSeek V4 Pro, DeepSeek V4 Flash):
 
 - Images are automatically converted to text descriptions using Vision MCP
-- If the MCP tool fails, the extension internally uses MiMo-V2-Omni for image analysis
-- MiMo-V2-Omni is also available as a selectable model with direct vision support
+- If the MCP tool fails, the extension internally uses MiMo-V2.5 for image analysis
+- MiMo-V2.5 is also available as a selectable model with direct vision support
 
 ### Large Context Errors
 

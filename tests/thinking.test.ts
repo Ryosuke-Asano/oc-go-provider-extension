@@ -9,11 +9,11 @@ import type { OcGoModelInfo } from "../src/types";
 describe("thinking module", () => {
   describe("getThinkingSchemaForModel", () => {
     it("returns null for non-thinking models", () => {
-      expect(getThinkingSchemaForModel("glm-5")).toBeNull();
+      expect(getThinkingSchemaForModel("qwen3.7-max")).toBeNull();
       expect(getThinkingSchemaForModel("glm-5.1")).toBeNull();
-      expect(getThinkingSchemaForModel("kimi-k2.5")).toBeNull();
+      expect(getThinkingSchemaForModel("kimi-k2.7-code")).toBeNull();
       expect(getThinkingSchemaForModel("kimi-k2.6")).toBeNull();
-      expect(getThinkingSchemaForModel("minimax-m2.5")).toBeNull();
+      expect(getThinkingSchemaForModel("minimax-m3")).toBeNull();
       expect(getThinkingSchemaForModel("minimax-m2.7")).toBeNull();
     });
 
@@ -25,16 +25,17 @@ describe("thinking module", () => {
     });
 
     it("returns schema for MiMo models", () => {
-      const schema = getThinkingSchemaForModel("mimo-v2-pro");
+      const schema = getThinkingSchemaForModel("mimo-v2.5");
       expect(schema).not.toBeNull();
       expect(schema!.properties.thinking_effort).toBeDefined();
       expect((schema!.properties.thinking_effort as { enum: string[] }).enum).toEqual(["on", "off"]);
     });
 
-    it("returns schema for Qwen models", () => {
-      const schema = getThinkingSchemaForModel("qwen3.6-plus");
+    it("returns schema for GLM-5.2 model", () => {
+      const schema = getThinkingSchemaForModel("glm-5.2");
       expect(schema).not.toBeNull();
       expect(schema!.properties.thinking_effort).toBeDefined();
+      expect((schema!.properties.thinking_effort as { enum: string[] }).enum).toEqual(["max", "high", "none"]);
     });
   });
 
@@ -70,9 +71,8 @@ describe("thinking module", () => {
         thinking: { type: "disabled" },
       });
     });
-
     it("returns correct params for MiMo on", () => {
-      const params = getThinkingParams("mimo-v2-pro", "on");
+      const params = getThinkingParams("mimo-v2.5", "on");
       expect(params).toEqual({
         chat_template_kwargs: { enable_thinking: true },
       });
@@ -85,10 +85,11 @@ describe("thinking module", () => {
       });
     });
 
-    it("returns correct params for Qwen on", () => {
-      const params = getThinkingParams("qwen3.5-plus", "on");
+    it("returns correct params for GLM-5.2 max", () => {
+      const params = getThinkingParams("glm-5.2", "max");
       expect(params).toEqual({
-        chat_template_kwargs: { enable_thinking: true },
+        reasoning_effort: "max",
+        thinking: { type: "enabled" },
       });
     });
   });
@@ -107,8 +108,8 @@ describe("thinking module", () => {
     });
 
     it("parses thinking variant for MiMo", () => {
-      const result = parseVariantModelId("mimo-v2-pro-thinking");
-      expect(result.baseId).toBe("mimo-v2-pro");
+      const result = parseVariantModelId("mimo-v2.5-thinking");
+      expect(result.baseId).toBe("mimo-v2.5");
       expect(result.level).toBeDefined();
     });
 
@@ -122,9 +123,9 @@ describe("thinking module", () => {
   describe("createModelVariants", () => {
     it("returns empty for non-switchable models", () => {
       const model: OcGoModelInfo = {
-        id: "glm-5",
-        name: "GLM-5",
-        displayName: "GLM-5",
+        id: "glm-5.1",
+        name: "GLM-5.1",
+        displayName: "GLM-5.1",
         contextWindow: 200000,
         maxOutput: 131072,
         supportsTools: true,

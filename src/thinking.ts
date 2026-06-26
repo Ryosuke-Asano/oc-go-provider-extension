@@ -20,6 +20,31 @@ interface FamilyConfig {
 
 // Sorted longest-key-first so "mimo-v2.5" matches before "mimo-v2"
 const FAMILIES: Record<string, FamilyConfig> = {
+  "glm-5.2": {
+    levels: ["max", "high", "none"],
+    getParams: (level) => {
+      switch (level) {
+        case "max":
+          return {
+            reasoning_effort: "max",
+            thinking: { type: "enabled" },
+          };
+        case "high":
+          return {
+            reasoning_effort: "high",
+            thinking: { type: "enabled" },
+          };
+        case "none":
+          return {
+            reasoning_effort: "none",
+            thinking: { type: "disabled" },
+          };
+        default:
+          return null;
+      }
+    },
+    suffix: "reasoning",
+  },
   "deepseek-v4": {
     levels: ["max", "high", "none"],
     getParams: (level) => {
@@ -53,20 +78,6 @@ const FAMILIES: Record<string, FamilyConfig> = {
     suffix: "thinking",
   },
   "mimo-v2": {
-    levels: ["on", "off"],
-    getParams: (level) => ({
-      chat_template_kwargs: { enable_thinking: level === "on" },
-    }),
-    suffix: "thinking",
-  },
-  "qwen3.6": {
-    levels: ["on", "off"],
-    getParams: (level) => ({
-      chat_template_kwargs: { enable_thinking: level === "on" },
-    }),
-    suffix: "thinking",
-  },
-  "qwen3.5": {
     levels: ["on", "off"],
     getParams: (level) => ({
       chat_template_kwargs: { enable_thinking: level === "on" },

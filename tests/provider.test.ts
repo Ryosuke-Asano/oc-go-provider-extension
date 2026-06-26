@@ -45,7 +45,7 @@ describe("OcGoChatModelProvider", () => {
       createToken()
     );
 
-    const glm5 = models.find((m) => m.id === "glm-5");
+    const glm5 = models.find((m) => m.id === "glm-5.1");
     expect(glm5).toBeDefined();
     expect(glm5?.maxInputTokens).toBe(202752 - Math.min(131072, 65536));
     expect(glm5?.maxOutputTokens).toBe(131072);
@@ -60,9 +60,9 @@ describe("OcGoChatModelProvider", () => {
       { silent: true } as vscode.PrepareLanguageModelChatModelOptions,
       createToken()
     );
-    const glm5 = models.find((m) => m.id === "glm-5");
+    const glm5 = models.find((m) => m.id === "glm-5.1");
     if (!glm5) {
-      throw new Error("glm-5 not found");
+      throw new Error("glm-5.1 not found");
     }
 
     const largePrompt = "a".repeat(72000 * 4);
@@ -93,9 +93,9 @@ describe("OcGoChatModelProvider", () => {
       { silent: true } as vscode.PrepareLanguageModelChatModelOptions,
       createToken()
     );
-    const kimiK25 = models.find((m) => m.id === "kimi-k2.5");
-    if (!kimiK25) {
-      throw new Error("kimi-k2.5 not found");
+    const mimoV25 = models.find((m) => m.id === "mimo-v2.5");
+    if (!mimoV25) {
+      throw new Error("mimo-v2.5 not found");
     }
 
     const messages = [vscode.LanguageModelChatMessage.User("hello")];
@@ -104,7 +104,7 @@ describe("OcGoChatModelProvider", () => {
     } as unknown as vscode.Progress<vscode.LanguageModelResponsePart>;
 
     await provider.provideLanguageModelChatResponse(
-      kimiK25,
+      mimoV25,
       messages,
       {},
       progress,
@@ -129,9 +129,9 @@ describe("OcGoChatModelProvider", () => {
       { silent: true } as vscode.PrepareLanguageModelChatModelOptions,
       createToken()
     );
-    const kimiK25 = models.find((m) => m.id === "kimi-k2.5");
-    if (!kimiK25) {
-      throw new Error("kimi-k2.5 not found");
+    const mimoV25 = models.find((m) => m.id === "mimo-v2.5");
+    if (!mimoV25) {
+      throw new Error("mimo-v2.5 not found");
     }
 
     const tooLargePrompt = "a".repeat(131073 * 4);
@@ -142,7 +142,7 @@ describe("OcGoChatModelProvider", () => {
 
     await expect(
       provider.provideLanguageModelChatResponse(
-        kimiK25,
+        mimoV25,
         messages,
         {},
         progress,
@@ -162,9 +162,9 @@ describe("OcGoChatModelProvider", () => {
       { silent: true } as vscode.PrepareLanguageModelChatModelOptions,
       createToken()
     );
-    const glm5 = models.find((m) => m.id === "glm-5");
+    const glm5 = models.find((m) => m.id === "glm-5.1");
     if (!glm5) {
-      throw new Error("glm-5 not found");
+      throw new Error("glm-5.1 not found");
     }
 
     const text = "text from LanguageModelDataPart";

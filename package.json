@@ -1,8 +1,8 @@
 {
   "name": "opencode-go-vscode-chat",
   "displayName": "OpenCode Go Chat Provider for VS Code",
-  "description": "Integrates OpenCode Go models (GLM-5/5.1, Kimi K2.5/K2.6, MiMo-V2/V2.5, MiniMax M2.5/M2.7, Qwen3.5/3.6 Plus, DeepSeek V4 Flash/Pro) into VS Code Copilot Chat with tool calling and vision",
-  "version": "0.7.0",
+  "description": "Integrates OpenCode Go models (GLM-5.2/5.1, Kimi K2.7 Code/K2.6, MiMo-V2.5/V2.5-Pro, MiniMax M3/M2.7, Qwen3.7 Max/Plus, Qwen3.6 Plus, DeepSeek V4 Flash/Pro) into VS Code Copilot Chat with tool calling and vision",
+  "version": "0.8.0",
   "publisher": "Ryosuke-Asano",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -71,11 +71,11 @@
       "properties": {
         "opencodego.visionProxyModel": {
           "type": "string",
-          "default": "mimo-v2-omni",
+          "default": "mimo-v2.5",
           "enum": [
-            "mimo-v2-omni",
             "mimo-v2.5",
             "kimi-k2.6",
+            "qwen3.7-plus",
             "qwen3.6-plus"
           ],
           "description": "Vision model used as OCR proxy for non-vision models"
