@@ -6,6 +6,7 @@ import * as path from "path";
 import { OcGoChatModelProvider, getSecretScanConfig } from "../src/provider";
 import { secrets } from "../__mocks__/vscode";
 import { secretScanLog } from "../src/secretScanLog";
+import * as secretScan from "../src/secretScan";
 
 function createDoneStream(): ReadableStream<Uint8Array> {
   return new ReadableStream<Uint8Array>({
@@ -180,6 +181,97 @@ describe("OcGoChatModelProvider", () => {
       createToken()
     );
     expect(count).toBe(Math.ceil(text.length / 2));
+  });
+});
+
+describe("secretScan live toggle (off stops redaction without restart)", () => {
+  let currentSecretScan: string;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    currentSecretScan = "redact";
+    (secrets.get as jest.Mock).mockResolvedValue("test-api-key");
+    (vscode.workspace.getConfiguration as jest.Mock).mockReturnValue({
+      get: jest.fn((key: string, defaultValue: unknown) => {
+        if (key === "secretScan") return currentSecretScan;
+        return defaultValue;
+      }),
+    });
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      body: createDoneStream(),
+    });
+  });
+
+  async function sendOne(provider: OcGoChatModelProvider, text: string) {
+    const models = await provider.provideLanguageModelChatInformation(
+      { silent: true } as vscode.PrepareLanguageModelChatModelOptions,
+      createToken()
+    );
+    const glm5 = models.find((m) => m.id === "glm-5");
+    if (!glm5) throw new Error("glm-5 not found");
+    const messages = [vscode.LanguageModelChatMessage.User(text)];
+    const progress = {
+      report: jest.fn(),
+    } as unknown as vscode.Progress<vscode.LanguageModelResponsePart>;
+    await provider.provideLanguageModelChatResponse(
+      glm5,
+      messages,
+      {},
+      progress,
+      createToken()
+    );
+  }
+
+  function lastChatBody(): string | undefined {
+    const fetchMock = global.fetch as jest.Mock;
+    const chatCall = fetchMock.mock.calls.find(
+      (c: unknown[]) =>
+        typeof c[1] === "object" && c[1] !== null && "body" in (c[1] as object)
+    );
+    return (chatCall?.[1] as { body?: string } | undefined)?.body;
+  }
+
+  it("skips scanAndRedact and leaves secrets in the body when secretScan=off", async () => {
+    currentSecretScan = "off";
+    const scanSpy = jest
+      .spyOn(secretScan, "scanAndRedact")
+      .mockResolvedValue({
+        redacted: true,
+        findings: [],
+        text: "should-not-be-used",
+      });
+
+    const provider = new OcGoChatModelProvider(
+      secrets as unknown as vscode.SecretStorage,
+      "jest-agent"
+    );
+    const secret = "AKIAIOSFODNN7EXAMPLE";
+    await sendOne(provider, `my token is ${secret}`);
+
+    expect(scanSpy).not.toHaveBeenCalled();
+    expect(lastChatBody()).toContain(secret);
+    scanSpy.mockRestore();
+  });
+
+  it("runs scanAndRedact when secretScan=redact", async () => {
+    currentSecretScan = "redact";
+    const scanSpy = jest
+      .spyOn(secretScan, "scanAndRedact")
+      .mockResolvedValue({
+        redacted: false,
+        findings: [],
+        text: "passthrough",
+      });
+
+    const provider = new OcGoChatModelProvider(
+      secrets as unknown as vscode.SecretStorage,
+      "jest-agent"
+    );
+    await sendOne(provider, "hello");
+
+    expect(scanSpy).toHaveBeenCalled();
+    scanSpy.mockRestore();
   });
 });
 
