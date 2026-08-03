@@ -1061,6 +1061,28 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
     thinkingMode: "switchable",
     baseUrl: "https://opencode.ai/zen/v1",
   },
+  {
+    id: "hy3",
+    name: "Hy3",
+    displayName: "Hy3",
+    contextWindow: 131072,
+    maxOutput: 65536,
+    supportsTools: true,
+    supportsVision: true,
+    apiFormat: "openai",
+    thinkingMode: "switchable",
+  },
+  {
+    id: "qwen3.8-max",
+    name: "Qwen3.8 Max",
+    displayName: "Qwen3.8 Max",
+    contextWindow: 131072,
+    maxOutput: 65536,
+    supportsTools: true,
+    supportsVision: true,
+    apiFormat: "openai",
+    thinkingMode: "switchable",
+  },
 ];
 
 /** Default model used for OCR/vision proxy when non-vision models receive images */

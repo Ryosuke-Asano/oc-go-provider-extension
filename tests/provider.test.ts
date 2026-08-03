@@ -54,6 +54,25 @@ describe("OcGoChatModelProvider", () => {
     expect(glm5?.maxOutputTokens).toBe(131072);
   });
 
+  it("should expose GPT 5.6 Luna as a user-selectable model", async () => {
+    const provider = new OcGoChatModelProvider(
+      secrets as unknown as vscode.SecretStorage,
+      "jest-agent"
+    );
+
+    const models = await provider.provideLanguageModelChatInformation(
+      { silent: true } as vscode.PrepareLanguageModelChatModelOptions,
+      createToken()
+    );
+
+    const luna = models.find((m) => m.id === "gpt-5.6-luna");
+    expect(luna).toBeDefined();
+    expect(luna?.name).toBe("GPT 5.6 Luna");
+    expect(luna?.isUserSelectable).toBe(true);
+    expect(luna?.maxInputTokens).toBe(272000 - 65536);
+    expect(luna?.maxOutputTokens).toBe(65536);
+  });
+
   it("should allow prompts larger than the old reserved-output cap", async () => {
     const provider = new OcGoChatModelProvider(
       secrets as unknown as vscode.SecretStorage,
@@ -234,13 +253,11 @@ describe("secretScan live toggle (off stops redaction without restart)", () => {
 
   it("skips scanAndRedact and leaves secrets in the body when secretScan=off", async () => {
     currentSecretScan = "off";
-    const scanSpy = jest
-      .spyOn(secretScan, "scanAndRedact")
-      .mockResolvedValue({
-        redacted: true,
-        findings: [],
-        text: "should-not-be-used",
-      });
+    const scanSpy = jest.spyOn(secretScan, "scanAndRedact").mockResolvedValue({
+      redacted: true,
+      findings: [],
+      text: "should-not-be-used",
+    });
 
     const provider = new OcGoChatModelProvider(
       secrets as unknown as vscode.SecretStorage,
@@ -256,13 +273,11 @@ describe("secretScan live toggle (off stops redaction without restart)", () => {
 
   it("runs scanAndRedact when secretScan=redact", async () => {
     currentSecretScan = "redact";
-    const scanSpy = jest
-      .spyOn(secretScan, "scanAndRedact")
-      .mockResolvedValue({
-        redacted: false,
-        findings: [],
-        text: "passthrough",
-      });
+    const scanSpy = jest.spyOn(secretScan, "scanAndRedact").mockResolvedValue({
+      redacted: false,
+      findings: [],
+      text: "passthrough",
+    });
 
     const provider = new OcGoChatModelProvider(
       secrets as unknown as vscode.SecretStorage,
