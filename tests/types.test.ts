@@ -370,6 +370,19 @@ describe("OC_GO_MODELS", () => {
     expect(model?.maxOutput).toBe(131072);
   });
 
+  it("should distinguish GLM-5.3 models in the model picker", () => {
+    expect(OC_GO_MODELS.find((m) => m.id === "glm-5.3")).toMatchObject({
+      name: "GLM-5.3",
+      displayName: "GLM-5.3",
+    });
+    expect(
+      OC_GO_MODELS.find((m) => m.id === "glm-5.3-flash")
+    ).toMatchObject({
+      name: "GLM-5.3 Flash",
+      displayName: "GLM-5.3 Flash",
+    });
+  });
+
   it("should have Kimi K2.5 model", () => {
     const model = OC_GO_MODELS.find((m) => m.id === "kimi-k2.5");
     expect(model).toBeDefined();

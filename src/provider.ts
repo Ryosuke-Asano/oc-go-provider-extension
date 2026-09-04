@@ -427,9 +427,10 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
 
     const infos: LanguageModelChatInformation[] = [];
     for (const model of models) {
+      const modelInputLimit = model.inputLimit ?? model.contextWindow;
       const maxInput = Math.max(
         1,
-        model.contextWindow - Math.min(model.maxOutput, DEFAULT_MAX_TOKENS)
+        modelInputLimit - Math.min(model.maxOutput, DEFAULT_MAX_TOKENS)
       );
       const info = {
         id: model.id,
@@ -460,9 +461,10 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
       // Add thinking variant models for stable API fallback
       const variants = createModelVariants(model);
       for (const v of variants) {
+        const variantInputLimit = v.inputLimit ?? v.contextWindow;
         const vMaxInput = Math.max(
           1,
-          v.contextWindow - Math.min(v.maxOutput, DEFAULT_MAX_TOKENS)
+          variantInputLimit - Math.min(v.maxOutput, DEFAULT_MAX_TOKENS)
         );
         const vInfo = {
           id: v.id,

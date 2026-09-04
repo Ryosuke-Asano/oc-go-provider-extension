@@ -130,6 +130,7 @@ export interface OcGoModelInfo {
   name: string;
   displayName: string;
   contextWindow: number;
+  inputLimit?: number;
   maxOutput: number;
   supportsTools: boolean;
   supportsVision: boolean;
@@ -1096,8 +1097,8 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
   },
   {
     id: "glm-5.3",
-    name: "GLM-5",
-    displayName: "GLM-5",
+    name: "GLM-5.3",
+    displayName: "GLM-5.3",
     contextWindow: 202752,
     maxOutput: 131072,
     supportsTools: true,
@@ -1107,8 +1108,8 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
   },
   {
     id: "glm-5.3-flash",
-    name: "GLM-5",
-    displayName: "GLM-5",
+    name: "GLM-5.3 Flash",
+    displayName: "GLM-5.3 Flash",
     contextWindow: 202752,
     maxOutput: 131072,
     supportsTools: true,

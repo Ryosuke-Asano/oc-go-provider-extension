@@ -1,8 +1,8 @@
-import { OcGoModelInfo } from "./types";
-import { OC_GO_MODELS } from "./types";
+import { OC_GO_MODELS, OcGoModelInfo } from "./types";
 
 const GO_MODELS_API = "https://opencode.ai/zen/go/v1/models";
 const ZEN_MODELS_API = "https://opencode.ai/zen/v1/models";
+const MODELS_DEV_API = "https://models.dev/api.json";
 const DISCOVER_CACHE_TTL_MS = 3_600_000; // 1 hour
 
 const FALLBACK_SPEC = {
@@ -16,7 +16,11 @@ const FALLBACK_SPEC = {
 let cachedDiscovered: OcGoModelInfo[] | null = null;
 let cacheTime = 0;
 
-const knownIds = new Set(OC_GO_MODELS.map((m) => m.id));
+interface ModelLimits {
+  context: number;
+  input?: number;
+  output: number;
+}
 
 function parseModelId(id: string): string {
   return id
@@ -94,13 +98,59 @@ async function fetchModelIds(apiUrl: string): Promise<string[]> {
   }
 }
 
-function buildModelEntry(id: string): OcGoModelInfo {
+async function fetchModelLimits(): Promise<Map<string, ModelLimits>> {
+  try {
+    const res = await fetch(MODELS_DEV_API, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return new Map();
+
+    const body = (await res.json()) as Record<string, unknown>;
+    const provider = body["opencode-go"];
+    if (typeof provider !== "object" || provider === null) return new Map();
+    const models = (provider as { models?: unknown }).models;
+    if (typeof models !== "object" || models === null) return new Map();
+
+    const limits = new Map<string, ModelLimits>();
+    for (const [id, value] of Object.entries(models)) {
+      if (typeof value !== "object" || value === null) continue;
+      const limit = (value as { limit?: unknown }).limit;
+      if (typeof limit !== "object" || limit === null) continue;
+      const candidate = limit as {
+        context?: unknown;
+        input?: unknown;
+        output?: unknown;
+      };
+      if (
+        typeof candidate.context !== "number" ||
+        typeof candidate.output !== "number"
+      ) {
+        continue;
+      }
+      limits.set(id, {
+        context: candidate.context,
+        input:
+          typeof candidate.input === "number" ? candidate.input : undefined,
+        output: candidate.output,
+      });
+    }
+    return limits;
+  } catch {
+    return new Map();
+  }
+}
+
+function buildModelEntry(
+  id: string,
+  limits?: ModelLimits
+): OcGoModelInfo {
   return {
     id,
     name: parseModelId(id),
     displayName: parseModelId(id),
-    contextWindow: FALLBACK_SPEC.contextWindow,
-    maxOutput: FALLBACK_SPEC.maxOutput,
+    contextWindow: limits?.context ?? FALLBACK_SPEC.contextWindow,
+    inputLimit: limits?.input,
+    maxOutput: limits?.output ?? FALLBACK_SPEC.maxOutput,
     supportsTools: true,
     supportsVision: inferVision(id),
     apiFormat: inferApiFormat(id),
@@ -115,31 +165,42 @@ export async function discoverModels(): Promise<OcGoModelInfo[]> {
     return cachedDiscovered;
   }
 
-  const [goIds, zenIds] = await Promise.all([
+  const [goIds, zenIds, goLimits] = await Promise.all([
     fetchModelIds(GO_MODELS_API),
     fetchModelIds(ZEN_MODELS_API),
+    fetchModelLimits(),
   ]);
 
+  const goIdSet = new Set(goIds);
   const apiIds = new Set([...goIds, ...zenIds]);
-  const newEntries: OcGoModelInfo[] = [];
+  const discoveredModels: OcGoModelInfo[] = [];
 
   for (const id of apiIds) {
-    if (!knownIds.has(id)) {
-      newEntries.push(buildModelEntry(id));
-    }
-  }
-
-  cachedDiscovered = newEntries;
-  cacheTime = now;
-
-  if (newEntries.length > 0) {
-    console.log(
-      `[OpenCode Go Provider] Discovered ${newEntries.length} new model(s) from API:`,
-      newEntries.map((m) => m.id).join(", ")
+    const limits = goIdSet.has(id) ? goLimits.get(id) : undefined;
+    const known = OC_GO_MODELS.find((model) => model.id === id);
+    discoveredModels.push(
+      limits && known
+        ? {
+            ...known,
+            contextWindow: limits.context,
+            inputLimit: limits.input,
+            maxOutput: limits.output,
+          }
+        : known ?? buildModelEntry(id, limits)
     );
   }
 
-  return newEntries;
+  cachedDiscovered = discoveredModels;
+  cacheTime = now;
+
+  if (discoveredModels.length > 0) {
+    console.log(
+      `[OpenCode Go Provider] Discovered ${discoveredModels.length} model(s) from API:`,
+      discoveredModels.map((m) => m.id).join(", ")
+    );
+  }
+
+  return discoveredModels;
 }
 
 export function clearDiscoverCache(): void {
@@ -148,9 +209,19 @@ export function clearDiscoverCache(): void {
 }
 
 export function getAllModels(discovered: OcGoModelInfo[]): OcGoModelInfo[] {
-  if (discovered.length === 0) return OC_GO_MODELS;
+  const discoveredById = new Map(discovered.map((model) => [model.id, model]));
   const known = new Set(OC_GO_MODELS.map((m) => m.id));
-  const merged = [...OC_GO_MODELS];
+  const merged = OC_GO_MODELS.map((model) => {
+    const discoveredModel = discoveredById.get(model.id);
+    return discoveredModel
+      ? {
+          ...model,
+          contextWindow: discoveredModel.contextWindow,
+          inputLimit: discoveredModel.inputLimit ?? model.inputLimit,
+          maxOutput: discoveredModel.maxOutput,
+        }
+      : model;
+  });
   for (const m of discovered) {
     if (!known.has(m.id)) {
       merged.push(m);
