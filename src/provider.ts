@@ -781,7 +781,7 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
           ? effectiveModelInfo.contextWindow
           : model.maxInputTokens
       );
-      statusBarSetActiveModel(tokenLimit);
+      statusBarSetActiveModel(tokenLimit, effectiveModelId);
       const hasAssistantTurn = messages.some(
         (m) => m.role === vscode.LanguageModelChatMessageRole.Assistant
       );
@@ -795,7 +795,6 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
       const inputTokenCount = estimateMessagesTokens(processedMessages, {
         maxToolResultChars: MAX_TOOL_RESULT_CHARS,
       });
-      statusBarSetPromptTokens(inputTokenCount);
 
       const mo = options.modelOptions as Record<string, Json> | undefined;
       const maxTokensVal =
@@ -830,6 +829,7 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
       }
 
       const totalEstimatedTokens = inputTokenCount + toolTokenCount;
+      statusBarSetPromptTokens(totalEstimatedTokens);
       debugLog("PRE-REQUEST", {
         model: effectiveModelId,
         apiFormat,
@@ -1207,7 +1207,10 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
 
           switch (event.type) {
             case "message_start":
-              // Initial message metadata — nothing to emit
+              this._usageMetrics.prompt_tokens =
+                event.message.usage.input_tokens;
+              this._usageMetrics.completion_tokens =
+                event.message.usage.output_tokens;
               break;
 
             case "content_block_start": {
@@ -1267,16 +1270,17 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
             }
 
             case "message_delta":
-              // Contains stop_reason, usage — nothing to emit
+              this._usageMetrics.completion_tokens = event.usage.output_tokens;
               break;
 
             case "message_stop":
-              // Stream is done
+              this.reportUsageMetrics(progress);
               break;
           }
         }
       }
     } finally {
+      this.reportUsageMetrics(progress);
       reader.releaseLock();
     }
   }
@@ -1500,7 +1504,7 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
               completion_tokens: this._usageMetrics.completion_tokens,
               total_tokens: totalTokens,
             },
-            "application/vnd.opencode-go.usage+json"
+            "usage"
           )
         );
       } catch (e) {

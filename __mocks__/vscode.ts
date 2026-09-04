@@ -200,6 +200,12 @@ export interface StatusBarItem {
 export interface ExtensionContext {
   secrets: SecretStorage;
   subscriptions: Disposable[];
+  globalState: Memento;
+}
+
+export interface Memento {
+  get<T>(key: string, defaultValue?: T): T | undefined;
+  update(key: string, value: unknown): Promise<void>;
 }
 
 export type Event<T> = (listener: (e: T) => void) => Disposable;

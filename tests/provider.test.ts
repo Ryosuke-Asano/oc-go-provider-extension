@@ -8,10 +8,26 @@ import { secrets } from "../__mocks__/vscode";
 import { secretScanLog } from "../src/secretScanLog";
 import * as secretScan from "../src/secretScan";
 
+interface SseEventFixture {
+  [key: string]: unknown;
+}
+
 function createDoneStream(): ReadableStream<Uint8Array> {
   return new ReadableStream<Uint8Array>({
     start(controller) {
       controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+      controller.close();
+    },
+  });
+}
+
+function createSseStream(
+  events: readonly SseEventFixture[]
+): ReadableStream<Uint8Array> {
+  const body = `${events.map((event) => `data: ${JSON.stringify(event)}\n`).join("\n")}\ndata: [DONE]\n`;
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(body));
       controller.close();
     },
   });
@@ -252,6 +268,111 @@ describe("OcGoChatModelProvider", () => {
       createToken()
     );
     expect(count).toBe(Math.ceil(text.length / 2));
+  });
+
+  it("reports OpenCode usage with Copilot's native usage MIME type", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      body: createSseStream([
+        {
+          choices: [],
+          usage: {
+            prompt_tokens: 1234,
+            completion_tokens: 56,
+          },
+        },
+      ]),
+    });
+    const provider = new OcGoChatModelProvider(
+      secrets as unknown as vscode.SecretStorage,
+      "jest-agent"
+    );
+    const models = await provider.provideLanguageModelChatInformation(
+      { silent: true } as vscode.PrepareLanguageModelChatModelOptions,
+      createToken()
+    );
+    const glm5 = models.find((model) => model.id === "glm-5");
+    if (!glm5) throw new Error("glm-5 not found");
+    const progress = {
+      report: jest.fn(),
+    } as unknown as vscode.Progress<vscode.LanguageModelResponsePart>;
+
+    await provider.provideLanguageModelChatResponse(
+      glm5,
+      [vscode.LanguageModelChatMessage.User("hello")],
+      {},
+      progress,
+      createToken()
+    );
+
+    const usagePart = (progress.report as jest.Mock).mock.calls
+      .map(([part]) => part)
+      .find((part) => part instanceof vscode.LanguageModelDataPart);
+    if (!usagePart) throw new Error("usage part not reported");
+    expect(usagePart.mimeType).toBe("usage");
+    expect(JSON.parse(new TextDecoder().decode(usagePart.data))).toEqual({
+      type: "usage",
+      prompt_tokens: 1234,
+      completion_tokens: 56,
+      total_tokens: 1290,
+    });
+  });
+
+  it("reports usage from Anthropic message events", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      body: createSseStream([
+        {
+          type: "message_start",
+          message: {
+            id: "message-id",
+            type: "message",
+            role: "assistant",
+            content: [],
+            model: "minimax-m2.5",
+            stop_reason: null,
+            usage: { input_tokens: 800, output_tokens: 0 },
+          },
+        },
+        {
+          type: "message_delta",
+          delta: { stop_reason: "end_turn", stop_sequence: null },
+          usage: { output_tokens: 75 },
+        },
+        { type: "message_stop" },
+      ]),
+    });
+    const provider = new OcGoChatModelProvider(
+      secrets as unknown as vscode.SecretStorage,
+      "jest-agent"
+    );
+    const models = await provider.provideLanguageModelChatInformation(
+      { silent: true } as vscode.PrepareLanguageModelChatModelOptions,
+      createToken()
+    );
+    const minimax = models.find((model) => model.id === "minimax-m2.5");
+    if (!minimax) throw new Error("minimax-m2.5 not found");
+    const progress = {
+      report: jest.fn(),
+    } as unknown as vscode.Progress<vscode.LanguageModelResponsePart>;
+
+    await provider.provideLanguageModelChatResponse(
+      minimax,
+      [vscode.LanguageModelChatMessage.User("hello")],
+      {},
+      progress,
+      createToken()
+    );
+
+    const usagePart = (progress.report as jest.Mock).mock.calls
+      .map(([part]) => part)
+      .find((part) => part instanceof vscode.LanguageModelDataPart);
+    if (!usagePart) throw new Error("usage part not reported");
+    expect(JSON.parse(new TextDecoder().decode(usagePart.data))).toMatchObject({
+      prompt_tokens: 800,
+      completion_tokens: 75,
+      total_tokens: 875,
+    });
   });
 });
 
