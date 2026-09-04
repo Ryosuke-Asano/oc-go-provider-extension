@@ -142,6 +142,58 @@ describe("OcGoChatModelProvider", () => {
     expect(requestBody.max_tokens).toBe(65536);
   });
 
+  it("should send a stable OpenCode session header for a conversation", async () => {
+    const provider = new OcGoChatModelProvider(
+      secrets as unknown as vscode.SecretStorage,
+      "jest-agent"
+    );
+    const models = await provider.provideLanguageModelChatInformation(
+      { silent: true } as vscode.PrepareLanguageModelChatModelOptions,
+      createToken()
+    );
+    const glm5 = models.find((m) => m.id === "glm-5");
+    if (!glm5) {
+      throw new Error("glm-5 not found");
+    }
+
+    const messages = [vscode.LanguageModelChatMessage.User("hello")];
+    const progress = {
+      report: jest.fn(),
+    } as unknown as vscode.Progress<vscode.LanguageModelResponsePart>;
+
+    await provider.provideLanguageModelChatResponse(
+      glm5,
+      messages,
+      {},
+      progress,
+      createToken()
+    );
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      body: createDoneStream(),
+    });
+    await provider.provideLanguageModelChatResponse(
+      glm5,
+      messages,
+      {},
+      progress,
+      createToken()
+    );
+
+    const calls = (global.fetch as jest.Mock).mock.calls.filter(
+      (call: unknown[]) =>
+        typeof call[1] === "object" &&
+        call[1] !== null &&
+        "body" in (call[1] as object)
+    );
+    const firstHeaders = calls[0]?.[1]?.headers as Record<string, string>;
+    const secondHeaders = calls[1]?.[1]?.headers as Record<string, string>;
+    expect(firstHeaders["x-opencode-session"]).toMatch(/^vscode-[a-f0-9]{64}$/);
+    expect(secondHeaders["x-opencode-session"]).toBe(
+      firstHeaders["x-opencode-session"]
+    );
+  }, 15000);
+
   it("should reject prompts that exceed the documented context window", async () => {
     const provider = new OcGoChatModelProvider(
       secrets as unknown as vscode.SecretStorage,

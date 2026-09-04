@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { createHash } from "node:crypto";
 import { accessSync, constants } from "fs";
 import { isAbsolute, resolve } from "path";
 import {
@@ -70,6 +71,22 @@ const MAX_TOOL_RESULT_CHARS = 20000;
 const MAX_TOOLS_PER_REQUEST = 128;
 const DEFAULT_MAX_TOKENS = 65536;
 const SECRET_SCAN_TIMEOUT_MS = 5_000;
+
+function getOpenCodeSessionId(
+  messages: readonly LanguageModelChatMessage[]
+): string {
+  const firstUserMessage = messages.find(
+    (message) => message.role === vscode.LanguageModelChatMessageRole.User
+  );
+  const sessionSeed = firstUserMessage
+    ? JSON.stringify({
+        name: firstUserMessage.name,
+        content: firstUserMessage.content,
+      })
+    : "empty-conversation";
+  const digest = createHash("sha256").update(sessionSeed).digest("hex");
+  return `vscode-${digest}`;
+}
 
 /**
  * Read the configured secret-scanner backend, action, and binary
@@ -980,12 +997,14 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
       : (scannedRaw as JsonObject)) as unknown as OcGoRequestBody;
 
     const baseUrl = modelBaseUrl ?? BASE_URL;
+    const sessionId = getOpenCodeSessionId(processedMessages);
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
         "User-Agent": this.userAgent,
+        "x-opencode-session": sessionId,
       },
       signal: abortController.signal,
       body: JSON.stringify(scannedBody),
@@ -1099,6 +1118,7 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
       : (scannedRaw as JsonObject)) as unknown as AnthropicRequestBody;
 
     const baseUrl = modelBaseUrl ?? BASE_URL;
+    const sessionId = getOpenCodeSessionId(processedMessages);
     const response = await fetch(`${baseUrl}/messages`, {
       method: "POST",
       headers: {
@@ -1106,6 +1126,7 @@ export class OcGoChatModelProvider implements LanguageModelChatProvider {
         "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
         "User-Agent": this.userAgent,
+        "x-opencode-session": sessionId,
       },
       signal: abortController.signal,
       body: JSON.stringify(scannedBody),
