@@ -5,6 +5,7 @@
 
 import { OcGoMcpClient } from "../src/mcp";
 import { secrets } from "../__mocks__/vscode";
+import * as vscode from "vscode";
 
 // Mock fetch for testing
 global.fetch = jest.fn();
@@ -138,6 +139,40 @@ describe("OcGoMcpClient", () => {
         (c: { type?: string }) => c.type === "text"
       );
       expect(promptContent?.text).toBe(prompt);
+    });
+
+    it("should use the configured vision proxy model", async () => {
+      (vscode.workspace.getConfiguration as jest.Mock).mockReturnValue({
+        get: jest.fn(() => "mimo-v2.5"),
+      });
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: "Description" } }],
+        }),
+      });
+
+      await client.analyzeImage("data:image/png;base64,...", "Describe");
+
+      const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
+      expect(JSON.parse(fetchCall[1].body).model).toBe("mimo-v2.5");
+    });
+
+    it("should migrate the old unsupported default vision proxy", async () => {
+      (vscode.workspace.getConfiguration as jest.Mock).mockReturnValue({
+        get: jest.fn(() => "mimo-v2-omni"),
+      });
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: "Description" } }],
+        }),
+      });
+
+      await client.analyzeImage("data:image/png;base64,...", "Describe");
+
+      const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
+      expect(JSON.parse(fetchCall[1].body).model).toBe("mimo-v2.5");
     });
   });
 });

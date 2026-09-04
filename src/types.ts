@@ -1198,4 +1198,4 @@ export const OC_GO_MODELS: OcGoModelInfo[] = [
 ];
 
 /** Default model used for OCR/vision proxy when non-vision models receive images */
-export const DEFAULT_VISION_PROXY_MODEL = "mimo-v2-omni";
+export const DEFAULT_VISION_PROXY_MODEL = "mimo-v2.5";

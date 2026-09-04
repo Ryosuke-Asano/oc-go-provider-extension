@@ -22,8 +22,18 @@ export class OcGoMcpClient {
     return !!this.apiKey;
   }
 
+  private getVisionProxyModel(proxyModelId?: string): string {
+    if (proxyModelId) return proxyModelId;
+    const configured = vscode.workspace
+      .getConfiguration("opencodego")
+      .get<string>("visionProxyModel", DEFAULT_VISION_PROXY_MODEL);
+    return configured === "mimo-v2-omni"
+      ? DEFAULT_VISION_PROXY_MODEL
+      : configured;
+  }
+
   /**
-   * Analyze an image using OpenCode Go Vision model (MiMo-V2-Omni)
+   * Analyze an image using the configured OpenCode Go Vision model.
    * This can be used for non-vision models to add image processing capabilities
    * @param imageData Base64-encoded image (data URL format)
    * @param prompt What to analyze in the image
@@ -32,14 +42,16 @@ export class OcGoMcpClient {
   async analyzeImage(
     imageData: string,
     prompt: string,
-    proxyModelId: string = DEFAULT_VISION_PROXY_MODEL
+    proxyModelId?: string
   ): Promise<string> {
     if (!(await this.ensureApiKey())) {
       throw new Error("OpenCode Go API key not found");
     }
 
+    const effectiveProxyModelId = this.getVisionProxyModel(proxyModelId);
+
     debugLog("OCR-CALL", {
-      model: proxyModelId,
+      model: effectiveProxyModelId,
       imageDataLength: imageData.length,
       promptLength: prompt.length,
     });
@@ -54,7 +66,7 @@ export class OcGoMcpClient {
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
-          model: proxyModelId,
+          model: effectiveProxyModelId,
           messages: [
             {
               role: "user",

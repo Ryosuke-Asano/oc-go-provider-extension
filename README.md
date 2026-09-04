@@ -166,7 +166,7 @@ The following model IDs are fetched from the OpenCode Go models endpoint. The li
 
 This extension integrates with OpenCode Go's MCP (Model Context Protocol) server:
 
-- **Vision MCP**: Image analysis using MiMo-V2-Omni (default vision proxy for non-vision models)
+- **Vision MCP**: Image analysis using MiMo-V2.5 (default vision proxy for non-vision models)
 
 ## Development
 

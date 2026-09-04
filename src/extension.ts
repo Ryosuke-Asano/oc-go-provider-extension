@@ -192,7 +192,9 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "opencode-go.selectVisionProxy",
       async () => {
-        const visionModels = OC_GO_MODELS.filter((m) => m.supportsVision);
+        const visionModels = OC_GO_MODELS.filter(
+          (m) => m.supportsVision && m.id !== "mimo-v2-omni"
+        );
         const current = vscode.workspace
           .getConfiguration("opencodego")
           .get<string>("visionProxyModel", DEFAULT_VISION_PROXY_MODEL);

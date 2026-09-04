@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
 import { OcGoMcpClient } from "./mcp";
-import { DEFAULT_VISION_PROXY_MODEL } from "./types";
 
 /**
  * Tool for analyzing images using OpenCode Go Vision model.
@@ -38,7 +37,7 @@ export class OcGoAnalyzeImageTool implements vscode.LanguageModelTool<{
 
   constructor(
     secrets: vscode.SecretStorage,
-    private readonly visionModelId: string = DEFAULT_VISION_PROXY_MODEL
+    private readonly visionModelId?: string
   ) {
     this._mcpClient = new OcGoMcpClient(secrets);
   }
