@@ -13,8 +13,9 @@ VSCE    ?= npx -y @vscode/vsce
 CODE    ?= code
 
 .PHONY: help all install compile watch test test-watch test-coverage \
-        lint lint-fix format format-check clean package package-no-deps publish \
-        reinstall sync-models sync-models-apply sync-zen-models sync-zen-models-apply
+	lint lint-fix format format-check clean package package-no-deps publish \
+	reinstall sync-models sync-models-apply sync-models-readme \
+	sync-models-apply-readme sync-zen-models sync-zen-models-apply
 
 .DEFAULT_GOAL := help
 
@@ -87,6 +88,12 @@ sync-models: ## Fetch model list from OpenCode Go API and show differences (dry-
 
 sync-models-apply: ## Fetch model list and insert new models into src/types.ts
 	$(NODE) scripts/sync-models.mjs --apply
+
+sync-models-readme: ## Fetch the OpenCode Go model list and update README.md
+	$(NODE) scripts/sync-models.mjs --readme
+
+sync-models-apply-readme: ## Fetch the OpenCode Go model list and update README.md and src/types.ts
+	$(NODE) scripts/sync-models.mjs --apply --readme
 
 sync-zen-models: ## Fetch model list from full OpenCode Zen API and show differences (dry-run)
 	$(NODE) scripts/sync-models.mjs --zen

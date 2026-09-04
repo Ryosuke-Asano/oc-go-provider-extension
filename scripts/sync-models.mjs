@@ -7,6 +7,7 @@
  * Usage:
  *   node scripts/sync-models.mjs           # dry-run — only report differences
  *   node scripts/sync-models.mjs --apply    # modify types.ts in-place
+ *   node scripts/sync-models.mjs --readme   # update the generated README table
  *   node scripts/sync-models.mjs --help     # show this message
  *
  * The script handles three kinds of changes:
@@ -18,6 +19,7 @@
 const GO_MODELS_API = "https://opencode.ai/zen/go/v1/models";
 const ZEN_MODELS_API = "https://opencode.ai/zen/v1/models";
 const TYPES_FILE = new URL("../src/types.ts", import.meta.url);
+const README_FILE = new URL("../README.md", import.meta.url);
 // Monorepo-style, but should work from project root
 
 /* ------------------------------------------------------------------ */
@@ -887,6 +889,36 @@ function guessName(id) {
     .join(" ");
 }
 
+function updateReadme(apiIds, fs) {
+  const source = fs.readFileSync(README_FILE, "utf-8");
+  const startMarker = "<!-- BEGIN GENERATED GO MODELS -->";
+  const endMarker = "<!-- END GENERATED GO MODELS -->";
+  const start = source.indexOf(startMarker);
+  const end = source.indexOf(endMarker);
+
+  if (start === -1 || end === -1 || end < start) {
+    throw new Error(
+      "Could not find generated model markers in README.md. Add the markers before running with --readme."
+    );
+  }
+
+  const table = [
+    "| Model ID |",
+    "| -------- |",
+    ...apiIds.map((id) => `| \`${id}\` |`),
+  ].join("\n");
+  const updated = `${source.slice(0, start + startMarker.length)}\n\n${table}\n\n${source.slice(end)}`;
+
+  if (updated !== source) {
+    fs.writeFileSync(README_FILE, updated, "utf-8");
+    console.log(
+      `✅ Updated ${apiIds.length} model IDs in ${README_FILE.pathname}\n`
+    );
+  } else {
+    console.log("✅ README model list is already up to date.\n");
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /*  Main                                                               */
 /* ------------------------------------------------------------------ */
@@ -896,15 +928,17 @@ async function main() {
   const isApply = args.includes("--apply");
   const isHelp = args.includes("--help");
   const isZen = args.includes("--zen");
+  const isReadme = args.includes("--readme");
 
   if (isHelp) {
     console.log(`
-Usage: node scripts/sync-models.mjs [--apply] [--zen]
+Usage: node scripts/sync-models.mjs [--apply] [--readme] [--zen]
 
 Fetches the OpenCode model list and compares it against OC_GO_MODELS
 in src/types.ts.
 
   --apply    Write new model entries directly into types.ts
+  --readme   Update the generated model ID table in README.md
   --zen      Use the full Zen API (https://opencode.ai/zen/v1/models)
              instead of the Go API (https://opencode.ai/zen/go/v1/models)
   --help     Show this help
@@ -917,7 +951,17 @@ Without --apply the script runs in dry-run mode (read-only).
   // 1. Fetch the API
   const apiUrl = isZen ? ZEN_MODELS_API : GO_MODELS_API;
   console.log("🔍 Fetching models from", apiUrl, "...");
-  const res = await fetch(apiUrl);
+  const fs = await import("node:fs");
+  const { EnvHttpProxyAgent, fetch: proxyFetch } = await import("undici");
+  const proxyConfigured = Boolean(
+    process.env.https_proxy || process.env.HTTPS_PROXY
+  );
+  if (proxyConfigured) {
+    console.log("   Using proxy from HTTPS proxy environment variable");
+  }
+  const res = await proxyFetch(apiUrl, {
+    dispatcher: new EnvHttpProxyAgent(),
+  });
   if (!res.ok) {
     console.error(`❌ API returned ${res.status} ${res.statusText}`);
     process.exit(1);
@@ -926,8 +970,14 @@ Without --apply the script runs in dry-run mode (read-only).
   const apiIds = (body.data || []).map((m) => m.id).sort();
   console.log(`   Found ${apiIds.length} models in API\n`);
 
+  if (isReadme) {
+    updateReadme(apiIds, fs);
+    if (!isApply) {
+      return;
+    }
+  }
+
   // 2. Read current types.ts
-  const fs = await import("node:fs");
   const source = fs.readFileSync(TYPES_FILE, "utf-8");
 
   // Extract existing model IDs from the OC_GO_MODELS array
